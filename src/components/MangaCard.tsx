@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BookOpen, Edit2, ExternalLink, Flag, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Manga } from '../types';
 
 interface MangaCardProps {
@@ -32,7 +33,15 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/80 shadow-sm shadow-slate-200/60 transition-all hover:-translate-y-0.5 hover:border-fuchsia-300/80 hover:shadow-lg hover:shadow-fuchsia-300/30 dark:border-slate-700/70 dark:bg-slate-900/70 dark:hover:border-fuchsia-400/80 dark:shadow-black/40">
+    <motion.div 
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="group relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/80 shadow-sm shadow-slate-200/60 transition-colors hover:border-fuchsia-300/80 hover:shadow-lg hover:shadow-fuchsia-300/30 dark:border-slate-700/70 dark:bg-slate-900/70 dark:hover:border-fuchsia-400/80 dark:shadow-black/40"
+    >
       <div className="absolute top-3 right-3 z-10 flex gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <button 
           onClick={() => onReport(manga.id)}
@@ -51,7 +60,7 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
       </div>
 
       <div className="flex h-full">
-        <div className="relative w-2/5 overflow-hidden bg-slate-100 group/cover dark:bg-slate-800">
+        <div className="relative w-2/5 overflow-hidden rounded-l-3xl bg-slate-100 group/cover dark:bg-slate-800">
           {manga.cover_image ? (
             <img 
               src={manga.cover_image} 
@@ -84,7 +93,7 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
         </div>
 
         <div className="relative flex flex-1 flex-col p-5 group/title">
-          <div className="mb-3">
+          <div className="mb-3 pr-24">
             {editingTitle ? (
               <div>
                 <input 
@@ -181,6 +190,6 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

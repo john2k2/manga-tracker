@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, ShieldAlert, Activity, CheckCircle, XCircle } from 'lucide-react';
 import clsx from 'clsx';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -51,6 +53,7 @@ export default function Admin() {
       if (data.stats) setStats(data.stats);
     } catch (error) {
       console.error('Error fetching stats:', error);
+      toast.error('Error cargando estadísticas');
     }
   };
 
@@ -61,6 +64,7 @@ export default function Admin() {
           if (data.reports) setReports(data.reports);
       } catch (error) {
           console.error('Error fetching reports:', error);
+          toast.error('Error cargando reportes');
       }
   };
 
@@ -79,8 +83,14 @@ export default function Admin() {
       });
       const result = await res.json();
       setValidationResult(result);
+      if (result.isValid) {
+        toast.success('Validación exitosa');
+      } else {
+        toast.warning('Validación con errores');
+      }
     } catch (error) {
       console.error('Validation error:', error);
+      toast.error('Error en la validación');
     } finally {
       setValidating(false);
     }
@@ -89,12 +99,21 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-transparent px-4 py-10 text-slate-900 dark:text-slate-50 sm:px-8">
       <div className="mx-auto max-w-6xl space-y-8">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl">
+        <motion.h1 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl"
+        >
           <Activity className="h-7 w-7 text-slate-500 dark:text-slate-400" />
           Panel de administración
-        </h1>
+        </motion.h1>
 
-        <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40"
+        >
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
             Salud de scraping (últimos 7 días)
           </h2>
@@ -136,9 +155,14 @@ export default function Admin() {
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40"
+        >
           <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
             <ShieldCheck className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             Validar nueva fuente
@@ -162,7 +186,11 @@ export default function Admin() {
           </form>
 
           {validationResult && (
-            <div className={clsx("rounded-2xl border p-4", validationResult.isValid ? "border-emerald-200/70 bg-emerald-50/70 dark:border-emerald-500/30 dark:bg-emerald-950/40" : "border-red-200/70 bg-red-50/70 dark:border-red-500/30 dark:bg-red-950/40")}>
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className={clsx("rounded-2xl border p-4", validationResult.isValid ? "border-emerald-200/70 bg-emerald-50/70 dark:border-emerald-500/30 dark:bg-emerald-950/40" : "border-red-200/70 bg-red-50/70 dark:border-red-500/30 dark:bg-red-950/40")}
+            >
               <div className="mb-3 flex items-center gap-2">
                 {validationResult.isValid ? <CheckCircle className="text-emerald-600" /> : <XCircle className="text-red-600" />}
                 <span className="text-sm font-semibold">
@@ -191,11 +219,16 @@ export default function Admin() {
                       <pre>{JSON.stringify(validationResult.data, null, 2)}</pre>
                   </div>
               )}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
 
-        <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40"
+        >
             <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 <ShieldAlert className="h-5 w-5 text-red-500" />
                 Reportes de usuarios
@@ -237,7 +270,7 @@ export default function Admin() {
                     </tbody>
                 </table>
             </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

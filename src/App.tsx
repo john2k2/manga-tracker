@@ -7,6 +7,8 @@ import Admin from './pages/Admin';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from './hooks/useTheme';
 
+import { Toaster } from 'sonner';
+
 function App() {
   useTheme();
   const [session, setSession] = useState<Session | null>(null);
@@ -32,7 +34,7 @@ function App() {
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="flex items-center gap-3 rounded-2xl bg-white/80 px-5 py-3 text-sm font-medium text-slate-900 shadow-lg ring-1 ring-slate-200 backdrop-blur-md dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-700">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-          <span>Cargando tu biblioteca...</span>
+          <span>Cargando tu rincón de lectura...</span>
         </div>
       </div>
     );
@@ -40,6 +42,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Toaster position="bottom-right" richColors />
       <Routes>
         <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
         <Route path="/" element={session ? <Home /> : <Navigate to="/login" />} />

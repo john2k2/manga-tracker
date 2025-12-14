@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import axios from 'axios';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Manga } from '../types';
 import { Header } from '../components/Header';
 import { AddMangaForm } from '../components/AddMangaForm';
@@ -33,6 +35,7 @@ export default function Home() {
       setMangas(response.data.mangas);
     } catch (error) {
       console.error('Error fetching mangas:', error);
+      toast.error('Error al cargar la biblioteca');
     } finally {
       setLoading(false);
     }
@@ -45,16 +48,18 @@ export default function Home() {
         url: url,
         user_id: user.id
       });
+      toast.success('¡Manga añadido a tu colección!');
       await fetchMangas(user.id);
     } catch (error) {
-      alert('Failed to add manga. Check URL or try again.');
       console.error(error);
+      toast.error('No se pudo añadir el manga. Verifica la URL.');
       throw error; // Propagate to form to stop loading state
     }
   };
 
   const handleDeleteManga = async (mangaId: string) => {
-    if (!confirm('Are you sure you want to remove this manga from your library?')) return;
+    // Custom toast with confirmation could be better, but native confirm is ok for now
+    if (!confirm('¿Seguro que quieres eliminar este manga de tu biblioteca?')) return;
     
     try {
       await axios.delete('/api/manga/delete', {
@@ -65,9 +70,10 @@ export default function Home() {
       });
       // Optimistic update
       setMangas(mangas.filter(m => m.id !== mangaId));
+      toast.success('Manga eliminado');
     } catch (error) {
       console.error('Error deleting manga:', error);
-      alert('Failed to delete manga.');
+      toast.error('Error al eliminar el manga');
     }
   };
 
@@ -82,9 +88,10 @@ export default function Home() {
         
         // Optimistic update
         setMangas(mangas.map(m => m.id === mangaId ? { ...m, cover_image: newCoverUrl } : m));
+        toast.success('Portada actualizada');
     } catch (error) {
         console.error('Error updating cover:', error);
-        alert('Failed to update cover');
+        toast.error('Error al actualizar la portada');
         throw error;
     }
   };
@@ -100,9 +107,10 @@ export default function Home() {
         
         // Optimistic update
         setMangas(mangas.map(m => m.id === mangaId ? { ...m, title: newTitle } : m));
+        toast.success('Título actualizado');
     } catch (error) {
         console.error('Error updating title:', error);
-        alert('Failed to update title');
+        toast.error('Error al actualizar el título');
         throw error;
     }
   };
@@ -118,16 +126,17 @@ export default function Home() {
             issue_type: data.issueType
         });
         
-        alert('Report submitted successfully. An admin will review it.');
+        toast.success('Reporte enviado. Gracias por avisarnos.');
     } catch (error) {
         console.error('Error reporting issue:', error);
-        alert('Failed to submit report');
+        toast.error('Error al enviar el reporte');
         throw error;
     }
   };
 
   const handleLogout = () => {
     supabase.auth.signOut();
+    toast.message('Sesión cerrada. ¡Hasta pronto!');
   };
   
   return (
@@ -145,18 +154,23 @@ export default function Home() {
         ) : mangas.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-            {mangas.map((manga) => (
-              <MangaCard 
-                key={manga.id} 
-                manga={manga}
-                onDelete={handleDeleteManga}
-                onReport={(id) => setReportingMangaId(id)}
-                onUpdateCover={handleUpdateCover}
-                onUpdateTitle={handleUpdateTitle}
-              />
-            ))}
-          </div>
+          <motion.div 
+            layout
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2"
+          >
+            <AnimatePresence mode='popLayout'>
+              {mangas.map((manga) => (
+                <MangaCard 
+                  key={manga.id} 
+                  manga={manga}
+                  onDelete={handleDeleteManga}
+                  onReport={(id) => setReportingMangaId(id)}
+                  onUpdateCover={handleUpdateCover}
+                  onUpdateTitle={handleUpdateTitle}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.div>
         )}
       </main>
 

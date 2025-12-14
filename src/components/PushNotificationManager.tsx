@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Bell, BellOff } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
@@ -63,11 +64,11 @@ export function PushNotificationManager() {
 
       setIsSubscribed(true);
       setPermission('granted');
-      alert('Notifications enabled successfully!');
+      toast.success('Notificaciones activadas correctamente');
 
     } catch (err) {
       console.error('Failed to subscribe the user: ', err);
-      alert('Failed to enable notifications. Please try again.');
+      toast.error('Error al activar notificaciones. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
