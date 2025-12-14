@@ -8,9 +8,7 @@ import express, {
   type NextFunction,
 } from 'express'
 import cors from 'cors'
-import path from 'path'
 import dotenv from 'dotenv'
-import { fileURLToPath } from 'url'
 import authRoutes from './routes/auth.js'
 import mangaRoutes from './routes/manga.js'
 import scrapeRoutes from './routes/scrape.js'
@@ -56,6 +54,7 @@ app.use(
  * error handler middleware
  */
 app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
+  void _next
   res.status(500).json({
     success: false,
     error: 'Server internal error',

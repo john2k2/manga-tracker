@@ -12,3 +12,33 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at top, rgba(79, 70, 229, 0.18) 0, transparent 40%),
+    radial-gradient(circle at 120% 120%, rgba(244, 114, 182, 0.16) 0, transparent 55%),
+    #f4f4f5;
+  color: #020617;
+}
+
+html.dark body {
+  background:
+    radial-gradient(circle at -10% -10%, rgba(94, 234, 212, 0.12) 0, transparent 45%),
+    radial-gradient(circle at 110% 120%, rgba(244, 114, 182, 0.18) 0, transparent 55%),
+    #020617;
+  color: #e5e7eb;
+}
+
+html.light body {
+  background:
+    radial-gradient(circle at top, rgba(79, 70, 229, 0.18) 0, transparent 40%),
+    radial-gradient(circle at 120% 120%, rgba(244, 114, 182, 0.16) 0, transparent 55%),
+    #f4f4f5;
+  color: #020617;
+}
+
+#root {
+  min-height: 100vh;
+}

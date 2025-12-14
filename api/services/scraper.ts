@@ -23,9 +23,13 @@ export interface ScrapedManga {
   chapters: ScrapedChapter[];
 }
 
+type FirecrawlAction =
+  | { type: 'click'; selector: string }
+  | { type: 'wait'; milliseconds: number };
+
 function getScrapeOptions(url: string) {
   const domain = new URL(url).hostname;
-  const actions: any[] = [];
+  const actions: FirecrawlAction[] = [];
   let onlyMainContent = true;
 
   if (domain.includes('manhwaweb.com')) {
@@ -136,7 +140,7 @@ export async function scrapeManga(url: string): Promise<ScrapedManga> {
     console.log(`Firecrawl success. Raw Markdown length: ${markdown.length}`);
 
     // 3. Optimize Content
-    let cleanMarkdown = markdown
+    const cleanMarkdown = markdown
       .replace(/\n{3,}/g, '\n\n')
       .replace(/!\[.*?\]\(data:image\/.*?\)/g, '[IMAGE_REMOVED]')
       .replace(/(!\[.*?\]\(.*?\)\s*){3,}/g, '\n[MULTIPLE_IMAGES_REMOVED]\n');
@@ -152,36 +156,37 @@ export async function scrapeManga(url: string): Promise<ScrapedManga> {
     
     return result;
 
-  } catch (error: any) {
-    console.error('Scraping error:', error.response?.data || error.message);
-    throw new Error(`Scraping failed: ${error.message}`);
+  } catch (error: unknown) {
+    if (typeof error === 'object' && error !== null) {
+      const maybeError = error as { message?: string; response?: { data?: unknown } };
+      console.error('Scraping error:', maybeError.response?.data || maybeError.message);
+      throw new Error(`Scraping failed: ${maybeError.message || 'Unknown error'}`);
+    }
+
+    console.error('Scraping error:', error);
+    throw new Error('Scraping failed: Unknown error');
   }
 }
 
 // Helper to fetch HTML directly mimicking a real browser
 async function tryDirectFetch(url: string): Promise<string | null> {
-  try {
-    const response = await axios.get(url, {
+  const response = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5'
       },
-      timeout: 5000 // Fast timeout, fail quickly if it hangs
+      timeout: 5000
     });
     
-    // If we got a valid HTML response
-    if (response.status === 200 && response.data && typeof response.data === 'string') {
-        // Basic check: is it a Cloudflare challenge?
-        if (response.data.includes('Just a moment...') || response.data.includes('Enable JavaScript')) {
-            throw new Error('Cloudflare Challenge detected');
-        }
-        return response.data;
+  if (response.status === 200 && response.data && typeof response.data === 'string') {
+    if (response.data.includes('Just a moment...') || response.data.includes('Enable JavaScript')) {
+      throw new Error('Cloudflare Challenge detected');
     }
-    return null;
-  } catch (error) {
-    throw error; // Let the main function handle the fallback
+    return response.data;
   }
+
+  return null;
 }
 
 async function parseWithGemini(content: string, url: string, type: 'html' | 'markdown'): Promise<ScrapedManga> {
@@ -236,14 +241,10 @@ async function parseWithGemini(content: string, url: string, type: 'html' | 'mar
     }
 
     // Validate and fix dates
-    parsedData.chapters = parsedData.chapters.map(chapter => {
-        let date = chapter.release_date;
-        // Check if it's the literal placeholder or invalid
+    parsedData.chapters = parsedData.chapters.map((chapter) => {
+        const date = chapter.release_date;
+
         if (date === 'YYYY-MM-DD' || !date || isNaN(Date.parse(date))) {
-            // If invalid, we can leave it undefined so the route handler sets it to now()
-            // or explicitly set it to null if we want to allow nulls.
-            // The route handler uses: c.release_date || new Date().toISOString()
-            // So setting it to undefined/null triggers the fallback to today.
             return { ...chapter, release_date: undefined };
         }
         return chapter;

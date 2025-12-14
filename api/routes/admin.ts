@@ -1,4 +1,5 @@
 
+import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { supabase } from '../lib/supabase.js';
 import { validateSource } from '../services/validator.js';
@@ -6,7 +7,7 @@ import { validateSource } from '../services/validator.js';
 const router = Router();
 
 // Validate a new source URL
-router.post('/validate', async (req, res) => {
+router.post('/validate', async (req: Request, res: Response) => {
     const { url } = req.body;
     if (!url) {
         res.status(400).json({ error: 'URL required' });
@@ -16,24 +17,32 @@ router.post('/validate', async (req, res) => {
     try {
         const result = await validateSource(url);
         res.json(result);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            res.status(500).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 
 // Get health stats for all domains
-router.get('/stats', async (req, res) => {
+router.get('/stats', async (_req: Request, res: Response) => {
     try {
         const { data, error } = await supabase.from('site_health_stats').select('*');
         if (error) throw error;
         res.json({ stats: data });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            res.status(500).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 
 // Report an issue
-router.post('/report-issue', async (req, res) => {
+router.post('/report-issue', async (req: Request, res: Response) => {
     const { user_id, manga_id, description, issue_type } = req.body;
     
     if (!description || !issue_type) {
@@ -50,13 +59,17 @@ router.post('/report-issue', async (req, res) => {
         });
         if (error) throw error;
         res.json({ success: true });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            res.status(500).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 
 // Get issue reports
-router.get('/reports', async (req, res) => {
+router.get('/reports', async (_req: Request, res: Response) => {
     try {
         const { data, error } = await supabase
             .from('issue_reports')
@@ -69,8 +82,12 @@ router.get('/reports', async (req, res) => {
             
         if (error) throw error;
         res.json({ reports: data });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            res.status(500).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 

@@ -8,15 +8,19 @@ import { MangaCard } from '../components/MangaCard';
 import { EmptyState } from '../components/EmptyState';
 import { ReportModal } from '../components/ReportModal';
 
+import type { User } from '@supabase/supabase-js';
+
 export default function Home() {
   const [mangas, setMangas] = useState<Manga[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   // State for reporting issues
   const [reportingMangaId, setReportingMangaId] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Manga Tracker – Tu biblioteca de mangas';
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
       if (user) fetchMangas(user.id);
@@ -127,21 +131,21 @@ export default function Home() {
   };
   
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 transition-colors duration-200 dark:bg-gray-900">
+    <div className="min-h-screen pb-20 text-slate-900 transition-colors duration-200 dark:text-slate-50">
       <Header onLogout={handleLogout} />
 
-      <main className="mx-auto max-w-4xl p-6">
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
         <AddMangaForm onAddManga={handleAddManga} />
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-            <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your library...</p>
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Cargando tu biblioteca...</p>
           </div>
         ) : mangas.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
             {mangas.map((manga) => (
               <MangaCard 
                 key={manga.id} 

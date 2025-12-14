@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /api/
+Disallow: /admin
+Allow: /
+
+Sitemap: https://manga-tracker-silk.vercel.app/sitemap.xml
+

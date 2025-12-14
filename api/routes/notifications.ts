@@ -1,3 +1,4 @@
+import type { Request, Response } from 'express';
 import { Router } from 'express';
 import webpush from 'web-push';
 import { supabase } from '../lib/supabase.js';
@@ -16,7 +17,7 @@ if (process.env.VITE_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 }
 
 // Subscribe to push notifications
-router.post('/subscribe', async (req, res) => {
+router.post('/subscribe', async (req: Request, res: Response) => {
     const { user_id, subscription } = req.body;
 
     if (!user_id || !subscription) {
@@ -35,14 +36,18 @@ router.post('/subscribe', async (req, res) => {
 
         console.log(`User ${user_id} subscribed to push notifications.`);
         res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error saving subscription:', error);
-        res.status(500).json({ error: error.message });
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 
 // Send a test notification (for debugging)
-router.post('/test-send', async (req, res) => {
+router.post('/test-send', async (req: Request, res: Response) => {
     const { user_id } = req.body;
     
     try {
@@ -66,9 +71,13 @@ router.post('/test-send', async (req, res) => {
 
         res.json({ success: true });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error sending test notification:', error);
-        res.status(500).json({ error: error.message });
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 

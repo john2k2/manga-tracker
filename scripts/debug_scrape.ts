@@ -51,12 +51,17 @@ async function debugScrape(url: string) {
     console.log('Saved markdown to debug_markdown_action.md');
 
     // 2. Parse with Gemini (using the same prompt as app)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    void genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
-  } catch (error: any) {
-    console.error('Error:', error.message);
-    if (error.response) {
-      console.error('Response data:', error.response.data);
+  } catch (error: unknown) {
+    if (typeof error === 'object' && error !== null) {
+      const maybeError = error as { message?: string; response?: { data?: unknown } };
+      console.error('Error:', maybeError.message || 'Unknown error');
+      if (maybeError.response) {
+        console.error('Response data:', maybeError.response.data);
+      }
+    } else {
+      console.error('Error:', error);
     }
   }
 }

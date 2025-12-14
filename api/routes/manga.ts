@@ -1,11 +1,34 @@
+import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { supabase } from '../lib/supabase.js';
 import { scrapeManga } from '../services/scraper.js';
 
 const router = Router();
 
+interface MangaRow {
+  id: string;
+  url: string;
+  title: string;
+  cover_image: string | null;
+}
+
+interface ChapterRow {
+  number: number;
+  url: string;
+  release_date: string | null;
+}
+
+interface UserMangaSettingsRow {
+  manga_id: string;
+  notifications_enabled: boolean;
+  last_read_chapter: number | null;
+  custom_title: string | null;
+  custom_cover: string | null;
+  mangas: MangaRow & { chapters: ChapterRow[] | null };
+}
+
 // Add manga
-router.post('/add', async (req, res) => {
+router.post('/add', async (req: Request, res: Response) => {
   const { url, user_id } = req.body;
   
   if (!url || !user_id) {
@@ -15,7 +38,8 @@ router.post('/add', async (req, res) => {
 
   try {
     // 1. Check if manga exists
-    let { data: manga, error: fetchError } = await supabase.from('mangas').select('*').eq('url', url).single();
+    const { data: mangaData, error: fetchError } = await supabase.from('mangas').select('*').eq('url', url).single();
+    let manga = mangaData as MangaRow | null;
 
     if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "No rows found"
        throw fetchError;
@@ -65,14 +89,18 @@ router.post('/add', async (req, res) => {
 
     res.json({ success: true, manga });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Unknown error' });
+    }
   }
 });
 
 // List mangas
-router.get('/list', async (req, res) => {
+router.get('/list', async (req: Request, res: Response) => {
   const { user_id } = req.query;
   if (!user_id) {
     res.status(400).json({ error: 'user_id is required' });
@@ -104,14 +132,15 @@ router.get('/list', async (req, res) => {
       .eq('user_id', user_id);
 
     if (error) throw error;
-    
-    // Format response
-    const mangas = data.map((item: any) => ({
+
+    const rows = (data ?? []) as unknown as UserMangaSettingsRow[];
+
+    const mangas = rows.map((item) => ({
       ...item.mangas,
       // Prefer custom settings over global ones
       title: item.custom_title || item.mangas.title,
       cover_image: item.custom_cover || item.mangas.cover_image,
-      chapters: item.mangas.chapters ? item.mangas.chapters.sort((a: any, b: any) => b.number - a.number).slice(0, 4) : [],
+      chapters: item.mangas.chapters ? item.mangas.chapters.slice().sort((a, b) => b.number - a.number).slice(0, 4) : [],
       settings: {
         notifications_enabled: item.notifications_enabled,
         last_read_chapter: item.last_read_chapter
@@ -119,13 +148,17 @@ router.get('/list', async (req, res) => {
     }));
 
     res.json({ mangas });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Unknown error' });
+    }
   }
 });
 
 // Get Manga Details
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     
     try {
@@ -146,13 +179,17 @@ router.get('/:id', async (req, res) => {
         if (chaptersError) throw chaptersError;
         
         res.json({ ...manga, chapters });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 
 // Delete manga
-router.delete('/delete', async (req, res) => {
+router.delete('/delete', async (req: Request, res: Response) => {
   const { manga_id, user_id } = req.body;
 
   if (!manga_id || !user_id) {
@@ -170,14 +207,18 @@ router.delete('/delete', async (req, res) => {
     if (error) throw error;
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting manga:', error);
-    res.status(500).json({ error: error.message });
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Unknown error' });
+    }
   }
 });
 
 // Update manga cover manually (Personalized)
-router.post('/update-cover', async (req, res) => {
+router.post('/update-cover', async (req: Request, res: Response) => {
     const { manga_id, user_id, cover_url } = req.body;
 
     if (!manga_id || !user_id || !cover_url) {
@@ -195,14 +236,18 @@ router.post('/update-cover', async (req, res) => {
         if (error) throw error;
 
         res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error updating cover:', error);
-        res.status(500).json({ error: error.message });
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 
 // Update manga title manually (Personalized)
-router.post('/update-title', async (req, res) => {
+router.post('/update-title', async (req: Request, res: Response) => {
     const { manga_id, user_id, title } = req.body;
 
     if (!manga_id || !user_id || !title) {
@@ -220,9 +265,13 @@ router.post('/update-title', async (req, res) => {
         if (error) throw error;
 
         res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error updating title:', error);
-        res.status(500).json({ error: error.message });
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: 'Unknown error' });
+        }
     }
 });
 

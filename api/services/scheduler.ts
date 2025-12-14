@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import webpush from 'web-push';
 import { supabase } from '../lib/supabase.js';
 import { scrapeManga } from './scraper.js';
+import type { ScrapedChapter } from './scraper.js';
 
 export function startScheduler() {
   console.log('⏳ Starting update scheduler (runs every 6 hours)...');
@@ -41,19 +42,19 @@ export async function checkAllMangas() {
 
         if (scrapedData.chapters.length > 0) {
            // Get existing chapters to compare
-           const { data: existingChapters } = await supabase
+          const { data: existingChapters } = await supabase
              .from('chapters')
              .select('number')
              .eq('manga_id', manga.id);
 
-           const existingNumbers = new Set(existingChapters?.map(c => c.number) || []);
-           const newChapters = scrapedData.chapters.filter(c => !existingNumbers.has(c.number));
+           const existingNumbers = new Set(existingChapters?.map((c) => c.number) || []);
+           const newChapters = scrapedData.chapters.filter((c) => !existingNumbers.has(c.number));
 
            if (newChapters.length > 0) {
              console.log(`✨ Found ${newChapters.length} new chapters for ${manga.title}!`);
              
              // Insert new chapters
-             const chaptersToInsert = newChapters.map(c => ({
+             const chaptersToInsert = newChapters.map((c) => ({
                manga_id: manga.id,
                number: c.number,
                title: c.title,
@@ -74,7 +75,7 @@ export async function checkAllMangas() {
         await supabase.from('mangas').update({ updated_at: new Date().toISOString() }).eq('id', manga.id);
 
         // Be nice to the servers, wait a bit between requests
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
 
       } catch (err) {
         console.error(`Failed to update ${manga.title}:`, err);
@@ -87,12 +88,27 @@ export async function checkAllMangas() {
   }
 }
 
-async function sendNotifications(manga: any, newChapters: any[]) {
+interface SchedulerManga {
+  id: string;
+  title: string;
+  url: string;
+}
+
+interface UserWithToken {
+  notification_token: string | null;
+}
+
+interface UserMangaSettingsWithUser {
+  user_id: string;
+  users: UserWithToken | null;
+}
+
+async function sendNotifications(manga: SchedulerManga, newChapters: ScrapedChapter[]) {
     try {
         // 1. Get users watching this manga with notifications enabled
         // We need to use !inner or similar if we wanted to filter by user properties, but here we filter by setting.
         // The relationship is: user_manga_settings.user_id -> users.id
-        const { data: settings, error } = await supabase
+        const { data, error } = await supabase
             .from('user_manga_settings')
             .select(`
                 user_id,
@@ -108,7 +124,9 @@ async function sendNotifications(manga: any, newChapters: any[]) {
             return;
         }
 
-        if (!settings || settings.length === 0) return;
+        const settings = (data ?? []) as unknown as UserMangaSettingsWithUser[];
+
+        if (settings.length === 0) return;
 
         console.log(`Sending notifications to ${settings.length} users...`);
 
@@ -121,7 +139,7 @@ async function sendNotifications(manga: any, newChapters: any[]) {
         });
 
         for (const item of settings) {
-            const user = item.users as any; // Cast to any to access joined data easily
+            const user = item.users;
             if (user && user.notification_token) {
                 try {
                     const subscription = JSON.parse(user.notification_token);

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Bell, BellOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
+    .replace(/-/g, '+')
     .replace(/_/g, '/');
 
   const rawData = window.atob(base64);
@@ -24,7 +25,7 @@ export function PushNotificationManager() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [permission, setPermission] = useState(Notification.permission);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -74,18 +75,18 @@ export function PushNotificationManager() {
 
   if (permission === 'denied') {
     return (
-      <div className="text-red-500 text-sm flex items-center gap-2">
-        <BellOff size={16} />
-        Notifications blocked
+      <div className="flex items-center gap-1.5 rounded-full border border-red-200/70 bg-red-50/70 px-3 py-1 text-xs font-medium text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-200">
+        <BellOff size={14} />
+        Notificaciones bloqueadas
       </div>
     );
   }
 
   if (isSubscribed) {
     return (
-      <div className="text-green-500 text-sm flex items-center gap-2">
-        <Bell size={16} />
-        Notifications on
+      <div className="flex items-center gap-1.5 rounded-full border border-emerald-200/70 bg-emerald-50/70 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-200">
+        <Bell size={14} />
+        Notificaciones activas
       </div>
     );
   }
@@ -94,10 +95,10 @@ export function PushNotificationManager() {
     <button
       onClick={subscribeUser}
       disabled={loading}
-      className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm transition-colors"
+      className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800 disabled:opacity-60"
     >
-      <Bell size={16} />
-      {loading ? 'Enabling...' : 'Enable Notifications'}
+      <Bell size={14} />
+      {loading ? 'Activando...' : 'Activar avisos'}
     </button>
   );
 }

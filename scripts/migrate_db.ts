@@ -1,19 +1,4 @@
 
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing Supabase credentials in .env');
-    process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 const sql = `
 -- Create domain_configs table for scraping strategy caching
 CREATE TABLE IF NOT EXISTS domain_configs (
@@ -63,9 +48,10 @@ async function runMigration() {
     // I can use the 'postgres' library if I install it, but I don't have the connection string (password is hidden inside the project usually).
     
     console.log('⚠️ LIMITATION: The Supabase JS client cannot execute raw SQL (CREATE TABLE) directly.');
-    console.log('✅ However, I have already prepared the migration file for you at:');
+    console.log('✅ However, there is a prepared migration file at:');
     console.log('   supabase/migrations/20251213000001_domain_cache.sql');
-    console.log('\n👉 Please copy the content of that file and paste it into the Supabase SQL Editor.');
+    console.log('\nContenido SQL generado para referencia:\n');
+    console.log(sql);
 }
 
 runMigration();

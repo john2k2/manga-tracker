@@ -1,6 +1,4 @@
-
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { ShieldCheck, ShieldAlert, Activity, CheckCircle, XCircle } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -19,7 +17,7 @@ interface SiteStats {
 interface ValidationResult {
   isValid: boolean;
   report: string[];
-  data: any;
+  data: unknown;
 }
 
 interface IssueReport {
@@ -40,6 +38,8 @@ export default function Admin() {
   const [validating, setValidating] = useState(false);
 
   useEffect(() => {
+    document.title = 'Manga Tracker – Panel de administración';
+
     fetchStats();
     fetchReports();
   }, []);
@@ -87,49 +87,50 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-          <Activity className="w-8 h-8" />
-          System Health & Admin
+    <div className="min-h-screen bg-transparent px-4 py-10 text-slate-900 dark:text-slate-50 sm:px-8">
+      <div className="mx-auto max-w-6xl space-y-8">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl">
+          <Activity className="h-7 w-7 text-slate-500 dark:text-slate-400" />
+          Panel de administración
         </h1>
 
-        {/* Stats Section */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Site Reliability Stats (Last 7 Days)</h2>
+        <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            Salud de scraping (últimos 7 días)
+          </h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
               <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Domain</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Duration</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attempts</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Dominio</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Éxito</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Duración media</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Intentos</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Última actividad</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-200 bg-white/60 dark:divide-slate-800 dark:bg-transparent">
                 {stats.map((stat) => (
                   <tr key={stat.domain}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{stat.domain}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-50">{stat.domain}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
                       <span className={clsx(
                         "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
-                        stat.success_rate >= 90 ? "bg-green-100 text-green-800" :
-                        stat.success_rate >= 70 ? "bg-yellow-100 text-yellow-800" :
+                        stat.success_rate >= 90 ? "bg-emerald-100 text-emerald-800" :
+                        stat.success_rate >= 70 ? "bg-amber-100 text-amber-800" :
                         "bg-red-100 text-red-800"
                       )}>
                         {stat.success_rate}%
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(stat.avg_duration_ms / 1000).toFixed(2)}s</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stat.total_attempts}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(stat.last_attempt_at).toLocaleString()}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{(stat.avg_duration_ms / 1000).toFixed(2)}s</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{stat.total_attempts}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{new Date(stat.last_attempt_at).toLocaleString()}</td>
                   </tr>
                 ))}
                 {stats.length === 0 && (
                     <tr>
-                        <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">No scraping data available yet.</td>
+                        <td colSpan={5} className="px-6 py-4 text-center text-sm text-slate-500">Todavía no hay datos de scraping.</td>
                     </tr>
                 )}
               </tbody>
@@ -137,17 +138,16 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Validation Tool */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-blue-600" />
-            Validate New Source
+        <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            <ShieldCheck className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            Validar nueva fuente
           </h2>
-          <form onSubmit={handleValidate} className="flex gap-4 mb-6">
+          <form onSubmit={handleValidate} className="mb-6 flex gap-3">
             <input
               type="url"
-              placeholder="Enter full manga URL to test..."
-              className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Pega la URL completa del manga a validar..."
+              className="flex-1 rounded-2xl border border-slate-300 bg-white/80 px-4 py-2.5 text-sm text-slate-900 outline-none ring-1 ring-transparent transition focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-900/80 dark:text-slate-50 dark:focus:ring-slate-500"
               value={urlToValidate}
               onChange={(e) => setUrlToValidate(e.target.value)}
               required
@@ -155,27 +155,39 @@ export default function Admin() {
             <button
               type="submit"
               disabled={validating}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-50 transition hover:bg-slate-800 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              {validating ? 'Validating...' : 'Run Validation'}
+              {validating ? 'Validando...' : 'Validar'}
             </button>
           </form>
 
           {validationResult && (
-            <div className={clsx("p-4 rounded-md border", validationResult.isValid ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")}>
-              <div className="flex items-center gap-2 mb-3">
-                {validationResult.isValid ? <CheckCircle className="text-green-600" /> : <XCircle className="text-red-600" />}
-                <span className="font-bold text-lg">{validationResult.isValid ? "Passed Validation" : "Validation Failed"}</span>
+            <div className={clsx("rounded-2xl border p-4", validationResult.isValid ? "border-emerald-200/70 bg-emerald-50/70 dark:border-emerald-500/30 dark:bg-emerald-950/40" : "border-red-200/70 bg-red-50/70 dark:border-red-500/30 dark:bg-red-950/40")}>
+              <div className="mb-3 flex items-center gap-2">
+                {validationResult.isValid ? <CheckCircle className="text-emerald-600" /> : <XCircle className="text-red-600" />}
+                <span className="text-sm font-semibold">
+                  {validationResult.isValid ? "Validación correcta" : "Validación con errores"}
+                </span>
               </div>
               <ul className="space-y-1">
                 {validationResult.report.map((line, i) => (
-                  <li key={i} className={clsx("text-sm font-mono", line.includes("ERROR") ? "text-red-600 font-bold" : line.includes("WARNING") ? "text-yellow-700" : "text-gray-700")}>
+                  <li
+                    key={i}
+                    className={clsx(
+                      "text-xs font-mono",
+                      line.includes("ERROR")
+                        ? "text-red-700 dark:text-red-300"
+                        : line.includes("WARNING")
+                        ? "text-amber-700 dark:text-amber-300"
+                        : "text-slate-700 dark:text-slate-200"
+                    )}
+                  >
                     {line}
                   </li>
                 ))}
               </ul>
               {validationResult.data && (
-                  <div className="mt-4 p-4 bg-gray-800 text-white rounded overflow-auto max-h-60 text-xs font-mono">
+                  <div className="mt-4 max-h-60 overflow-auto rounded-2xl bg-slate-900 px-4 py-3 text-xs font-mono text-slate-50">
                       <pre>{JSON.stringify(validationResult.data, null, 2)}</pre>
                   </div>
               )}
@@ -183,44 +195,43 @@ export default function Admin() {
           )}
         </div>
 
-        {/* Issue Reports */}
-        <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                <ShieldAlert className="w-6 h-6 text-red-600" />
-                User Issue Reports
+        <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                <ShieldAlert className="h-5 w-5 text-red-500" />
+                Reportes de usuarios
             </h2>
             <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                     <thead>
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manga</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Fecha</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Tipo</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Manga</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Usuario</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Descripción</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Estado</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="divide-y divide-slate-200 bg-white/60 dark:divide-slate-800 dark:bg-transparent">
                         {reports.map((report) => (
                             <tr key={report.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(report.created_at).toLocaleDateString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">{report.issue_type?.replace('_', ' ') || 'Unknown'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 hover:underline">
+                                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">{new Date(report.created_at).toLocaleDateString()}</td>
+                                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium capitalize text-slate-900 dark:text-slate-50">{report.issue_type?.replace('_', ' ') || 'Unknown'}</td>
+                                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700 hover:underline dark:text-slate-200">
                                     <a href={report.mangas?.url} target="_blank" rel="noreferrer">{report.mangas?.title || 'Unknown Manga'}</a>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{report.users?.email}</td>
-                                <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate" title={report.description}>{report.description}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <span className={clsx("px-2 inline-flex text-xs leading-5 font-semibold rounded-full", report.status === 'open' ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800")}>
-                                        {report.status}
+                                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">{report.users?.email}</td>
+                                <td className="max-w-xs px-6 py-4 text-sm text-slate-700 truncate dark:text-slate-200" title={report.description}>{report.description}</td>
+                                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">
+                                    <span className={clsx("inline-flex px-2 text-xs leading-5 font-semibold rounded-full", report.status === 'open' ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800")}>
+                                        {report.status === 'open' ? 'Abierto' : 'Cerrado'}
                                     </span>
                                 </td>
                             </tr>
                         ))}
                         {reports.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">No issues reported yet.</td>
+                                <td colSpan={6} className="px-6 py-4 text-center text-sm text-slate-500">Todavía no hay reportes.</td>
                             </tr>
                         )}
                     </tbody>

@@ -32,20 +32,18 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50">
-      
-      {/* Card Actions Overlay */}
-      <div className="absolute top-3 right-3 z-10 flex gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+    <div className="group relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/80 shadow-sm shadow-slate-200/60 transition-all hover:-translate-y-0.5 hover:border-fuchsia-300/80 hover:shadow-lg hover:shadow-fuchsia-300/30 dark:border-slate-700/70 dark:bg-slate-900/70 dark:hover:border-fuchsia-400/80 dark:shadow-black/40">
+      <div className="absolute top-3 right-3 z-10 flex gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <button 
           onClick={() => onReport(manga.id)}
-          className="rounded-full bg-white/90 p-2 text-gray-500 shadow-sm backdrop-blur-md transition-colors hover:bg-yellow-50 hover:text-yellow-600 dark:bg-gray-800/90 dark:text-gray-400 dark:hover:bg-yellow-900/50 dark:hover:text-yellow-400"
+          className="rounded-full bg-white/90 p-2 text-slate-500 shadow-sm backdrop-blur-md transition-colors hover:bg-yellow-50 hover:text-yellow-600 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:bg-yellow-950/40 dark:hover:text-yellow-300"
           title="Report Issue"
         >
           <Flag size={18} />
         </button>
         <button 
           onClick={() => onDelete(manga.id)}
-          className="rounded-full bg-white/90 p-2 text-gray-500 shadow-sm backdrop-blur-md transition-colors hover:bg-red-50 hover:text-red-600 dark:bg-gray-800/90 dark:text-gray-400 dark:hover:bg-red-900/50 dark:hover:text-red-400"
+          className="rounded-full bg-white/90 p-2 text-slate-500 shadow-sm backdrop-blur-md transition-colors hover:bg-red-50 hover:text-red-600 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
           title="Remove Manga"
         >
           <Trash2 size={18} />
@@ -53,8 +51,7 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
       </div>
 
       <div className="flex h-full">
-        {/* Cover Image Section */}
-        <div className="relative w-2/5 group/cover overflow-hidden bg-gray-100 dark:bg-gray-700">
+        <div className="relative w-2/5 overflow-hidden bg-slate-100 group/cover dark:bg-slate-800">
           {manga.cover_image ? (
             <img 
               src={manga.cover_image} 
@@ -67,20 +64,18 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
             />
           ) : null}
           
-          {/* Fallback Placeholder */}
-          <div className={`flex h-full flex-col items-center justify-center p-4 text-center text-gray-400 dark:text-gray-500 ${manga.cover_image ? 'hidden' : ''}`}>
-            <BookOpen size={32} className="mb-2 opacity-50" />
-            <span className="text-[10px] uppercase font-bold tracking-widest opacity-40">No Cover</span>
+          <div className={`flex h-full flex-col items-center justify-center p-4 text-center text-slate-400 dark:text-slate-500 ${manga.cover_image ? 'hidden' : ''}`}>
+            <BookOpen size={32} className="mb-2 opacity-60" />
+            <span className="text-[10px] uppercase font-bold tracking-widest opacity-60">Sin portada</span>
           </div>
 
-          {/* Edit Cover Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-200 group-hover/cover:opacity-100">
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 transition-opacity duration-150 group-hover/cover:opacity-100">
             <button 
               onClick={() => {
                 setEditingCover(true);
                 setNewCoverUrl(manga.cover_image || '');
               }}
-              className="rounded-full bg-white/20 p-3 text-white backdrop-blur-sm transition-transform hover:scale-110 hover:bg-white/30"
+              className="rounded-full bg-fuchsia-500/90 p-3 text-white shadow-sm shadow-fuchsia-400/60 backdrop-blur-sm transition-transform hover:scale-105 hover:bg-fuchsia-400/90"
               title="Change Cover Image"
             >
               <Edit2 size={20} />
@@ -88,23 +83,21 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
           </div>
         </div>
 
-        {/* Content Section */}
-        <div className="flex flex-1 flex-col p-5 relative group/title">
-          {/* Title & Edit */}
+        <div className="relative flex flex-1 flex-col p-5 group/title">
           <div className="mb-3">
             {editingTitle ? (
-              <div className="animate-in fade-in zoom-in-95 duration-200">
+              <div>
                 <input 
                   type="text" 
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full rounded-md border-2 border-blue-500 p-1.5 text-sm font-bold dark:bg-gray-700 dark:border-blue-400 dark:text-white"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 outline-none ring-1 ring-transparent transition focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-50 dark:focus:ring-slate-500"
                   autoFocus
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
                 />
-                <div className="mt-2 flex justify-end gap-2">
-                  <button onClick={() => setEditingTitle(false)} className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancel</button>
-                  <button onClick={handleSaveTitle} className="rounded bg-blue-600 px-2 py-0.5 text-xs font-bold text-white hover:bg-blue-700">Save</button>
+                <div className="mt-2 flex justify-end gap-2 text-xs">
+                  <button onClick={() => setEditingTitle(false)} className="rounded-full px-3 py-1 font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">Cancelar</button>
+                  <button onClick={handleSaveTitle} className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-slate-50 transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200">Guardar</button>
                 </div>
               </div>
             ) : (
@@ -112,10 +105,10 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
                 setEditingTitle(true);
                 setNewTitle(manga.title);
               }}>
-                <h3 className="line-clamp-2 text-lg font-bold leading-tight text-gray-900 transition-colors group-hover/text:text-blue-600 dark:text-white dark:group-hover/text:text-blue-400" title={manga.title}>
+                <h3 className="line-clamp-2 text-base font-semibold leading-snug text-slate-900 transition-colors group-hover/text:text-slate-900 dark:text-slate-50 dark:group-hover/text:text-slate-50" title={manga.title}>
                   {manga.title}
                 </h3>
-                <Edit2 size={12} className="absolute -right-4 top-1 opacity-0 transition-opacity group-hover/text:opacity-50 text-gray-500" />
+                <Edit2 size={12} className="absolute -right-4 top-1 text-fuchsia-400 opacity-0 transition-opacity group-hover/text:opacity-90" />
               </div>
             )}
           </div>
@@ -125,15 +118,16 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
             href={manga.url} 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="mb-4 inline-flex items-center text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+            className="mb-4 inline-flex items-center text-xs font-medium text-slate-500 hover:text-fuchsia-600 dark:text-slate-400 dark:hover:text-fuchsia-300"
           >
             <ExternalLink size={12} className="mr-1" />
             {new URL(manga.url).hostname.replace('www.', '')}
           </a>
           
-          {/* Chapters List */}
           <div className="mt-auto">
-            <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Latest Updates</h4>
+            <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+              Últimos capítulos
+            </h4>
             <div className="flex flex-col gap-1.5">
               {manga.chapters.length > 0 ? (
                 manga.chapters.map((chapter, idx) => (
@@ -142,17 +136,17 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
                     href={chapter.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group/chapter flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:bg-gray-700/50 dark:text-gray-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+                    className="group/chapter flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-gradient-to-r hover:from-indigo-500 hover:via-fuchsia-500 hover:to-amber-400 hover:text-white dark:bg-slate-800/70 dark:text-slate-200 dark:hover:from-indigo-400 dark:hover:via-fuchsia-400 dark:hover:to-amber-300"
                   >
                     <span className="truncate">Ch. {chapter.number}</span>
-                    <span className="text-[10px] text-gray-400 group-hover/chapter:text-blue-400/70">
+                    <span className="text-[10px] text-slate-400 group-hover/chapter:text-slate-200 dark:group-hover/chapter:text-slate-600">
                       {chapter.release_date ? new Date(chapter.release_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
                     </span>
                   </a>
-                ))
-              ) : (
-                <div className="rounded-lg border border-dashed border-gray-200 p-3 text-center text-xs text-gray-400 dark:border-gray-700 dark:text-gray-500">
-                  No chapters found
+              ))
+            ) : (
+                <div className="rounded-lg border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                  Aún no hay capítulos disponibles
                 </div>
               )}
             </div>
@@ -160,30 +154,29 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
         </div>
       </div>
 
-      {/* Edit Cover Modal Overlay (Local to Card) */}
       {editingCover && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/95 p-6 backdrop-blur-sm dark:bg-gray-900/95">
-          <h4 className="mb-4 text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Update Cover Image</h4>
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/95 p-6 backdrop-blur-md dark:bg-slate-950/95">
+          <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Actualizar portada</h4>
           <input 
             type="text" 
             value={newCoverUrl}
             onChange={(e) => setNewCoverUrl(e.target.value)}
-            placeholder="Paste image URL..."
-            className="mb-4 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            placeholder="Pega la URL de la imagen..."
+            className="mb-4 w-full rounded-xl border border-slate-300 bg-white/80 px-4 py-2 text-sm text-slate-900 outline-none ring-1 ring-transparent transition focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-900/80 dark:text-slate-50 dark:focus:ring-slate-500"
             autoFocus
           />
           <div className="flex w-full gap-3">
-            <button 
+            <button
               onClick={() => setEditingCover(false)}
-              className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="flex-1 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              Cancel
+              Cancelar
             </button>
-            <button 
+            <button
               onClick={handleSaveCover}
-              className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="flex-1 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-50 transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              Save Changes
+              Guardar cambios
             </button>
           </div>
         </div>

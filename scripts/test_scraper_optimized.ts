@@ -35,10 +35,15 @@ async function test() {
         console.log('\n⚠️ ADVERTENCIA: No se encontraron capítulos.');
     }
 
-  } catch (error: any) {
-    console.error('\n❌ Error en la prueba:', error.message);
-    if (error.response) {
-        console.error('Detalles API:', error.response.data);
+  } catch (error: unknown) {
+    if (typeof error === 'object' && error !== null) {
+      const maybeError = error as { message?: string; response?: { data?: unknown } };
+      console.error('\n❌ Error en la prueba:', maybeError.message || 'Unknown error');
+      if (maybeError.response) {
+        console.error('Detalles API:', maybeError.response.data);
+      }
+    } else {
+      console.error('\n❌ Error en la prueba:', error);
     }
   }
 }

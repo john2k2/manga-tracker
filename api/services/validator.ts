@@ -28,7 +28,7 @@ export async function validateSource(url: string) {
             try {
                 await axios.head(data.cover_url);
                 report.push(`SUCCESS: Cover URL is accessible: ${data.cover_url}`);
-            } catch (e) {
+            } catch {
                 report.push(`ERROR: Cover URL is not accessible (404/403): ${data.cover_url}`);
                 isValid = false;
             }
@@ -53,8 +53,12 @@ export async function validateSource(url: string) {
             }
         }
 
-    } catch (error: any) {
-        report.push(`CRITICAL ERROR: Scrape failed - ${error.message}`);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            report.push(`CRITICAL ERROR: Scrape failed - ${error.message}`);
+        } else {
+            report.push('CRITICAL ERROR: Scrape failed - Unknown error');
+        }
         isValid = false;
     }
 
