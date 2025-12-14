@@ -25,12 +25,12 @@ export function Header({ onLogout }: HeaderProps) {
           >
             <BookOpen size={18} />
           </motion.div>
-          <div>
+          <div className="flex items-center gap-2">
             <h1 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-lg">
               Manga Tracker
             </h1>
-            <div className="flex items-center gap-2">
-              <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">
+            <div className="hidden items-center gap-2 sm:flex">
+              <p className="hidden text-xs text-slate-500 dark:text-slate-400 lg:block">
                 Tu rincón tranquilo de lectura.
               </p>
               <motion.span 
@@ -48,17 +48,17 @@ export function Header({ onLogout }: HeaderProps) {
           <PushNotificationManager />
           <button
             onClick={toggleTheme}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800 sm:inline-flex"
             title={isDark ? 'Modo claro' : 'Modo oscuro'}
           >
               {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
           <button
             onClick={onLogout}
-            className="inline-flex h-9 items-center justify-center rounded-full border border-slate-200 px-3 text-xs font-medium text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:text-slate-200 dark:hover:border-red-400/60 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-slate-200 px-2 text-xs font-medium text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:text-slate-200 dark:hover:border-red-400/60 dark:hover:bg-red-950/40 dark:hover:text-red-300 sm:px-3"
             title="Cerrar sesión"
           >
-            <LogOut size={16} className="mr-1" />
+            <LogOut size={16} className="sm:mr-1" />
             <span className="hidden sm:inline">Salir</span>
           </button>
         </div>

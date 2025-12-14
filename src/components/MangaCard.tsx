@@ -92,7 +92,7 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
           </div>
         </div>
 
-        <div className="relative flex flex-1 flex-col p-5 group/title">
+        <div className="relative flex flex-1 flex-col p-3 sm:p-5 group/title">
           <div className="mb-3 pr-24">
             {editingTitle ? (
               <div>

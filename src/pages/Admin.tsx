@@ -167,7 +167,7 @@ export default function Admin() {
             <ShieldCheck className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             Validar nueva fuente
           </h2>
-          <form onSubmit={handleValidate} className="mb-6 flex gap-3">
+          <form onSubmit={handleValidate} className="mb-6 flex flex-col gap-3 sm:flex-row">
             <input
               type="url"
               placeholder="Pega la URL completa del manga a validar..."
