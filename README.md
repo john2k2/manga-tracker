@@ -2,8 +2,6 @@
 
 Una aplicación web moderna (PWA) para rastrear tus mangas favoritos, recibir notificaciones de nuevos capítulos y mantener tu biblioteca organizada automáticamente mediante Inteligencia Artificial.
 
-![Manga Tracker Preview](public/favicon.svg) <!-- Puedes reemplazar esto con una captura de pantalla real más tarde -->
-
 ## ✨ Características
 
 -   **Scraping Inteligente Híbrido:**
