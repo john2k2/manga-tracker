@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { BookOpen, Edit2, ExternalLink, Flag, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
+import { BookOpen, Edit2, ExternalLink, Flag, Trash2, Calendar, CheckCircle2, PauseCircle, XCircle, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Manga } from '../types';
 
 interface MangaCardProps {
@@ -9,14 +9,66 @@ interface MangaCardProps {
   onReport: (id: string) => void;
   onUpdateCover: (id: string, newUrl: string) => Promise<void>;
   onUpdateTitle: (id: string, newTitle: string) => Promise<void>;
+  onUpdateStatus: (id: string, status: string) => Promise<void>;
 }
 
-export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTitle }: MangaCardProps) {
+const STATUS_CONFIG = {
+  reading: { 
+    label: 'Leyendo', 
+    icon: BookOpen, 
+    bg: 'bg-blue-500 dark:bg-blue-600', 
+    text: 'text-white',
+    hover: 'hover:bg-blue-600 dark:hover:bg-blue-700'
+  },
+  plan_to_read: { 
+    label: 'Por leer', 
+    icon: Calendar, 
+    bg: 'bg-slate-500 dark:bg-slate-600', 
+    text: 'text-white',
+    hover: 'hover:bg-slate-600 dark:hover:bg-slate-700'
+  },
+  completed: { 
+    label: 'Completado', 
+    icon: CheckCircle2, 
+    bg: 'bg-emerald-500 dark:bg-emerald-600', 
+    text: 'text-white',
+    hover: 'hover:bg-emerald-600 dark:hover:bg-emerald-700'
+  },
+  on_hold: { 
+    label: 'En pausa', 
+    icon: PauseCircle, 
+    bg: 'bg-amber-500 dark:bg-amber-600', 
+    text: 'text-white',
+    hover: 'hover:bg-amber-600 dark:hover:bg-amber-700'
+  },
+  dropped: { 
+    label: 'Dropeado', 
+    icon: XCircle, 
+    bg: 'bg-red-500 dark:bg-red-600', 
+    text: 'text-white',
+    hover: 'hover:bg-red-600 dark:hover:bg-red-700'
+  },
+};
+
+export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTitle, onUpdateStatus }: MangaCardProps) {
   const [editingCover, setEditingCover] = useState(false);
   const [newCoverUrl, setNewCoverUrl] = useState('');
   
   const [editingTitle, setEditingTitle] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const statusRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (statusRef.current && !statusRef.current.contains(event.target as Node)) {
+        setIsStatusOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [statusRef]);
 
   const handleSaveCover = async () => {
     if (!newCoverUrl) return;
@@ -31,6 +83,7 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
     setEditingTitle(false);
     setNewTitle('');
   };
+
 
   return (
     <motion.div 
@@ -132,6 +185,65 @@ export function MangaCard({ manga, onDelete, onReport, onUpdateCover, onUpdateTi
             <ExternalLink size={12} className="mr-1" />
             {new URL(manga.url).hostname.replace('www.', '')}
           </a>
+
+          {/* Reading Status Selector */}
+          <div className="mb-4" ref={statusRef}>
+             <div className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setIsStatusOpen(!isStatusOpen)}
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-wider shadow-sm transition-all ${
+                    STATUS_CONFIG[(manga.settings.reading_status || 'reading') as keyof typeof STATUS_CONFIG].bg
+                  } ${STATUS_CONFIG[(manga.settings.reading_status || 'reading') as keyof typeof STATUS_CONFIG].text}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const Icon = STATUS_CONFIG[(manga.settings.reading_status || 'reading') as keyof typeof STATUS_CONFIG].icon;
+                      return <Icon size={14} />;
+                    })()}
+                    <span>{STATUS_CONFIG[(manga.settings.reading_status || 'reading') as keyof typeof STATUS_CONFIG].label}</span>
+                  </div>
+                  <ChevronDown size={14} className={`transition-transform duration-300 ${isStatusOpen ? 'rotate-180' : ''}`} />
+                </motion.button>
+
+                <AnimatePresence>
+                  {isStatusOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="absolute left-0 top-full z-20 mt-2 w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white/90 p-1 shadow-xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95"
+                    >
+                      {Object.entries(STATUS_CONFIG).map(([key, config]) => {
+                        const Icon = config.icon;
+                        const isSelected = (manga.settings.reading_status || 'reading') === key;
+                        
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => {
+                              onUpdateStatus(manga.id, key);
+                              setIsStatusOpen(false);
+                            }}
+                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                              isSelected 
+                                ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100' 
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200'
+                            }`}
+                          >
+                            <Icon size={14} className={isSelected ? config.text.replace('text-white', 'text-indigo-500') : ''} />
+                            <span>{config.label}</span>
+                            {isSelected && <motion.div layoutId={`activeStatus-${manga.id}`} className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />}
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+             </div>
+          </div>
           
           <div className="mt-auto">
             <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">

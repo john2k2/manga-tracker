@@ -23,9 +23,55 @@ export interface ScrapedManga {
   chapters: ScrapedChapter[];
 }
 
+export interface SearchResult {
+  title: string;
+  url: string;
+  description?: string;
+}
+
 type FirecrawlAction =
   | { type: 'click'; selector: string }
   | { type: 'wait'; milliseconds: number };
+
+export async function searchManga(query: string): Promise<SearchResult[]> {
+  if (!FIRECRAWL_API_KEY) throw new Error('FIRECRAWL_API_KEY is missing');
+
+  try {
+    console.log(`🔍 Searching for: ${query}`);
+    const response = await axios.post(
+      'https://api.firecrawl.dev/v1/search',
+      {
+        query: `${query} manga online capitulos`, // Optimize query for manga sites
+        limit: 5,
+        lang: 'es', // Prefer Spanish results since the user speaks Spanish
+        scrapeOptions: { formats: ['markdown'] } // Minimal scrape to save tokens? Actually search returns snippets.
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.data.success) {
+       console.warn('Firecrawl search failed:', response.data);
+       return [];
+    }
+
+    // Map Firecrawl results to our format
+    // Firecrawl search returns { data: [ { url, title, description, ... } ] }
+    return response.data.data.map((item: { title: string; url: string; description?: string }) => ({
+      title: item.title || 'Sin título',
+      url: item.url,
+      description: item.description
+    }));
+
+  } catch (error) {
+    console.error('Search error:', error);
+    return [];
+  }
+}
 
 function getScrapeOptions(url: string) {
   const domain = new URL(url).hostname;

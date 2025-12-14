@@ -14,6 +14,7 @@ import mangaRoutes from './routes/manga.js'
 import scrapeRoutes from './routes/scrape.js'
 import notificationRoutes from './routes/notifications.js'
 import adminRoutes from './routes/admin.js'
+import cronRoutes from './routes/cron.js'
 
 // for esm mode
 // const __filename = fileURLToPath(import.meta.url)
@@ -36,6 +37,7 @@ app.use('/api/manga', mangaRoutes)
 app.use('/api/scrape', scrapeRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/cron', cronRoutes)
 
 /**
  * health

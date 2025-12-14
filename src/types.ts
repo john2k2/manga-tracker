@@ -13,5 +13,6 @@ export interface Manga {
   settings: {
     notifications_enabled: boolean;
     last_read_chapter: number;
+    reading_status: 'reading' | 'completed' | 'plan_to_read' | 'dropped' | 'on_hold';
   };
 }

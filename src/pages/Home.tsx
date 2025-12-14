@@ -8,6 +8,7 @@ import { Header } from '../components/Header';
 import { AddMangaForm } from '../components/AddMangaForm';
 import { MangaCard } from '../components/MangaCard';
 import { EmptyState } from '../components/EmptyState';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import { ReportModal } from '../components/ReportModal';
 
 import type { User } from '@supabase/supabase-js';
@@ -19,6 +20,9 @@ export default function Home() {
 
   // State for reporting issues
   const [reportingMangaId, setReportingMangaId] = useState<string | null>(null);
+  
+  // State for deleting manga
+  const [deletingMangaId, setDeletingMangaId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Manga Tracker – Tu biblioteca de mangas';
@@ -57,24 +61,28 @@ export default function Home() {
     }
   };
 
-  const handleDeleteManga = async (mangaId: string) => {
-    // Custom toast with confirmation could be better, but native confirm is ok for now
-    if (!confirm('¿Seguro que quieres eliminar este manga de tu biblioteca?')) return;
+  const confirmDeleteManga = async () => {
+    if (!deletingMangaId || !user) return;
     
     try {
       await axios.delete('/api/manga/delete', {
         data: {
-          manga_id: mangaId,
+          manga_id: deletingMangaId,
           user_id: user.id
         }
       });
       // Optimistic update
-      setMangas(mangas.filter(m => m.id !== mangaId));
-      toast.success('Manga eliminado');
+      setMangas(mangas.filter(m => m.id !== deletingMangaId));
+      toast.success('Manga eliminado de tu biblioteca');
+      setDeletingMangaId(null);
     } catch (error) {
       console.error('Error deleting manga:', error);
       toast.error('Error al eliminar el manga');
     }
+  };
+
+  const handleDeleteManga = (mangaId: string) => {
+    setDeletingMangaId(mangaId);
   };
 
   const handleUpdateCover = async (mangaId: string, newCoverUrl: string) => {
@@ -111,6 +119,28 @@ export default function Home() {
     } catch (error) {
         console.error('Error updating title:', error);
         toast.error('Error al actualizar el título');
+        throw error;
+    }
+  };
+
+  const handleUpdateStatus = async (mangaId: string, status: string) => {
+    if (!user) return;
+    try {
+        await axios.post('/api/manga/update-status', {
+            manga_id: mangaId,
+            user_id: user.id,
+            status: status
+        });
+        
+        // Optimistic update
+        setMangas(mangas.map(m => m.id === mangaId ? { 
+            ...m, 
+            settings: { ...m.settings, reading_status: status as Manga['settings']['reading_status'] } 
+        } : m));
+        toast.success('Estado actualizado');
+    } catch (error) {
+        console.error('Error updating status:', error);
+        toast.error('Error al actualizar el estado');
         throw error;
     }
   };
@@ -162,11 +192,12 @@ export default function Home() {
               {mangas.map((manga) => (
                 <MangaCard 
                   key={manga.id} 
-                  manga={manga}
-                  onDelete={handleDeleteManga}
-                  onReport={(id) => setReportingMangaId(id)}
-                  onUpdateCover={handleUpdateCover}
-                  onUpdateTitle={handleUpdateTitle}
+                  manga={manga} 
+                  onDelete={handleDeleteManga} 
+                  onReport={(id) => setReportingMangaId(id)} 
+                  onUpdateCover={handleUpdateCover} 
+                  onUpdateTitle={handleUpdateTitle} 
+                  onUpdateStatus={handleUpdateStatus} 
                 />
               ))}
             </AnimatePresence>
@@ -174,10 +205,23 @@ export default function Home() {
         )}
       </main>
 
-      <ReportModal 
-        isOpen={!!reportingMangaId} 
-        onClose={() => setReportingMangaId(null)} 
-        onSubmit={handleReportIssue} 
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={!!reportingMangaId}
+        onClose={() => setReportingMangaId(null)}
+        onSubmit={handleReportIssue}
+      />
+
+      {/* Confirmation Modal for Deletion */}
+      <ConfirmationModal
+        isOpen={!!deletingMangaId}
+        onClose={() => setDeletingMangaId(null)}
+        onConfirm={confirmDeleteManga}
+        title="¿Eliminar manga?"
+        description="Esta acción eliminará el manga de tu biblioteca. No podrás deshacer esta acción."
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        isDestructive={true}
       />
     </div>
   );

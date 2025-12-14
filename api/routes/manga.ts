@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { supabase } from '../lib/supabase.js';
-import { scrapeManga } from '../services/scraper.js';
+import { scrapeManga, searchManga } from '../services/scraper.js';
 
 const router = Router();
 
@@ -22,10 +22,28 @@ interface UserMangaSettingsRow {
   manga_id: string;
   notifications_enabled: boolean;
   last_read_chapter: number | null;
+  reading_status: 'reading' | 'completed' | 'plan_to_read' | 'dropped' | 'on_hold';
   custom_title: string | null;
   custom_cover: string | null;
   mangas: MangaRow & { chapters: ChapterRow[] | null };
 }
+
+// Search manga
+router.post('/search', async (req: Request, res: Response) => {
+  const { query } = req.body;
+  if (!query) {
+    res.status(400).json({ error: 'Query is required' });
+    return;
+  }
+
+  try {
+    const results = await searchManga(query);
+    res.json({ results });
+  } catch (error: unknown) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
 
 // Add manga
 router.post('/add', async (req: Request, res: Response) => {
@@ -114,6 +132,7 @@ router.get('/list', async (req: Request, res: Response) => {
         manga_id,
         notifications_enabled,
         last_read_chapter,
+        reading_status,
         custom_title,
         custom_cover,
         mangas (
@@ -143,7 +162,8 @@ router.get('/list', async (req: Request, res: Response) => {
       chapters: item.mangas.chapters ? item.mangas.chapters.slice().sort((a, b) => b.number - a.number).slice(0, 4) : [],
       settings: {
         notifications_enabled: item.notifications_enabled,
-        last_read_chapter: item.last_read_chapter
+        last_read_chapter: item.last_read_chapter,
+        reading_status: item.reading_status
       }
     }));
 
@@ -267,6 +287,35 @@ router.post('/update-title', async (req: Request, res: Response) => {
         res.json({ success: true });
     } catch (error: unknown) {
         console.error('Error updating title:', error);
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: 'Unknown error' });
+        }
+    }
+});
+
+// Update reading status
+router.post('/update-status', async (req: Request, res: Response) => {
+    const { manga_id, user_id, status } = req.body;
+
+    if (!manga_id || !user_id || !status) {
+        res.status(400).json({ error: 'manga_id, user_id, and status are required' });
+        return;
+    }
+
+    try {
+        const { error } = await supabase
+            .from('user_manga_settings')
+            .update({ reading_status: status })
+            .eq('user_id', user_id)
+            .eq('manga_id', manga_id);
+
+        if (error) throw error;
+
+        res.json({ success: true });
+    } catch (error: unknown) {
+        console.error('Error updating status:', error);
         if (error instanceof Error) {
           res.status(500).json({ error: error.message });
         } else {

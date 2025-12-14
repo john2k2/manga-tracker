@@ -15,13 +15,27 @@ export function startScheduler() {
   });
 }
 
+interface MangaSettings {
+  reading_status: string;
+}
+
+interface MangaChapter {
+  release_date: string;
+}
+
 export async function checkAllMangas() {
   console.log('Checking for manga updates...');
   
   try {
     const { data: mangas, error } = await supabase
       .from('mangas')
-      .select('id, url, title');
+      .select(`
+        id, 
+        url, 
+        title, 
+        chapters(release_date),
+        user_manga_settings(reading_status)
+      `);
 
     if (error) {
       console.error('Error fetching mangas for update:', error);
@@ -37,6 +51,39 @@ export async function checkAllMangas() {
 
     for (const manga of mangas) {
       try {
+        // Optimization 1: Skip if NO ONE is reading it
+        // We consider active if status is 'reading' or 'plan_to_read'
+        const settings = (manga.user_manga_settings as unknown as MangaSettings[]) || [];
+        const activeReaders = settings.filter(s => ['reading', 'plan_to_read'].includes(s.reading_status));
+        
+        if (activeReaders.length === 0 && settings.length > 0) {
+             console.log(`⏭️ Skipping ${manga.title}. All users dropped/completed/held.`);
+             continue;
+        }
+
+        // Optimization 2: 7-day rule
+        // Smart Check: Only check if it's been 7 days since the last chapter release
+        // If no chapters exist, we check anyway.
+        const chapters = (manga.chapters as unknown as MangaChapter[]) || [];
+        if (chapters.length > 0) {
+            // Find the latest release date
+            const latestDateStr = chapters.sort((a, b) => new Date(b.release_date).getTime() - new Date(a.release_date).getTime())[0]?.release_date;
+            
+            if (latestDateStr) {
+                const latestDate = new Date(latestDateStr);
+                const nextCheckDate = new Date(latestDate);
+                nextCheckDate.setDate(latestDate.getDate() + 7); // Add 7 days
+                
+                // Allow a small buffer (e.g. check 6 hours before the exact 7 days to catch it early)
+                nextCheckDate.setHours(nextCheckDate.getHours() - 6);
+
+                if (new Date() < nextCheckDate) {
+                    console.log(`⏭️ Skipping ${manga.title}. Next expected chapter around ${nextCheckDate.toDateString()}`);
+                    continue;
+                }
+            }
+        }
+
         console.log(`Checking ${manga.title} (${manga.url})...`);
         const scrapedData = await scrapeManga(manga.url);
 
