@@ -1,9 +1,32 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { supabase } from '../lib/supabase.js';
+import { logger } from '../lib/logger.js';
 import { scrapeManga, searchManga } from '../services/scraper.js';
+import {
+  validateBody,
+  validateQuery,
+  addMangaSchema,
+  deleteMangaSchema,
+  updateCoverSchema,
+  updateTitleSchema,
+  updateStatusSchema,
+  searchSchema,
+  listMangasQuerySchema,
+  type AddMangaInput,
+  type DeleteMangaInput,
+  type UpdateCoverInput,
+  type UpdateTitleInput,
+  type UpdateStatusInput,
+  type SearchInput
+} from '../validators/schemas.js';
 
 const router = Router();
+const log = logger.child({ service: 'manga-routes' });
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface MangaRow {
   id: string;
@@ -28,49 +51,51 @@ interface UserMangaSettingsRow {
   mangas: MangaRow & { chapters: ChapterRow[] | null };
 }
 
+// ============================================================================
+// Routes
+// ============================================================================
+
 // Search manga
-router.post('/search', async (req: Request, res: Response) => {
-  const { query } = req.body;
-  if (!query) {
-    res.status(400).json({ error: 'Query is required' });
-    return;
-  }
+router.post('/search', validateBody(searchSchema), async (req: Request, res: Response) => {
+  const { query } = req.body as SearchInput;
 
   try {
+    log.info('Search request', { query });
     const results = await searchManga(query);
     res.json({ results });
   } catch (error: unknown) {
-    console.error('Search error:', error);
+    log.error('Search error', error instanceof Error ? error : new Error(String(error)));
     res.status(500).json({ error: 'Search failed' });
   }
 });
 
 // Add manga
-router.post('/add', async (req: Request, res: Response) => {
-  const { url, user_id } = req.body;
-
-  if (!url || !user_id) {
-    res.status(400).json({ error: 'URL and user_id are required' });
-    return;
-  }
+router.post('/add', validateBody(addMangaSchema), async (req: Request, res: Response) => {
+  const { url, user_id } = req.body as AddMangaInput;
 
   try {
+    log.info('Add manga request', { url, userId: user_id });
+
     // 1. Check if manga exists
-    const { data: mangaData, error: fetchError } = await supabase.from('mangas').select('*').eq('url', url).single();
+    const { data: mangaData, error: fetchError } = await supabase
+      .from('mangas')
+      .select('*')
+      .eq('url', url)
+      .single();
+
     let manga = mangaData as MangaRow | null;
 
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "No rows found"
+    if (fetchError && fetchError.code !== 'PGRST116') {
       throw fetchError;
     }
 
-    // Force re-scrape if manga exists but user is re-adding it (assuming they want to update)
-    // Or if it's new.
-    console.log('Scraping manga data...');
+    // Force re-scrape to get latest data
+    log.debug('Scraping manga', { url });
     const scrapedData = await scrapeManga(url);
 
     // 3. Insert or Update manga
     const { data: newManga, error: mangaError } = await supabase.from('mangas').upsert({
-      ...(manga ? { id: manga.id } : {}), // If exists, preserve ID
+      ...(manga ? { id: manga.id } : {}),
       title: scrapedData.title,
       url: url,
       cover_image: scrapedData.cover_url,
@@ -92,9 +117,13 @@ router.post('/add', async (req: Request, res: Response) => {
         release_date: c.release_date || new Date().toISOString()
       }));
 
-      // Use upsert to avoid conflicts
-      const { error: chapterError } = await supabase.from('chapters').upsert(chaptersToInsert, { onConflict: 'manga_id, number' });
-      if (chapterError) console.error('Error inserting chapters:', chapterError);
+      const { error: chapterError } = await supabase
+        .from('chapters')
+        .upsert(chaptersToInsert, { onConflict: 'manga_id, number' });
+
+      if (chapterError) {
+        log.warn('Error inserting chapters', { mangaId: manga!.id, error: chapterError });
+      }
     }
 
     // 5. Link to user
@@ -106,25 +135,24 @@ router.post('/add', async (req: Request, res: Response) => {
 
     if (linkError) throw linkError;
 
+    log.info('Manga added successfully', {
+      mangaId: manga!.id,
+      title: scrapedData.title,
+      chapters: scrapedData.chapters.length
+    });
+
     res.json({ success: true, manga });
 
   } catch (error: unknown) {
-    console.error(error);
-    if (error instanceof Error) {
-      res.status(500).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Unknown error' });
-    }
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Add manga failed', err, { url });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // List mangas
-router.get('/list', async (req: Request, res: Response) => {
-  const { user_id } = req.query;
-  if (!user_id) {
-    res.status(400).json({ error: 'user_id is required' });
-    return;
-  }
+router.get('/list', validateQuery(listMangasQuerySchema), async (req: Request, res: Response) => {
+  const { user_id } = req.query as { user_id: string };
 
   try {
     const { data, error } = await supabase
@@ -157,10 +185,11 @@ router.get('/list', async (req: Request, res: Response) => {
 
     const mangas = rows.map((item) => ({
       ...item.mangas,
-      // Prefer custom settings over global ones
       title: item.custom_title || item.mangas.title,
       cover_image: item.custom_cover || item.mangas.cover_image,
-      chapters: item.mangas.chapters ? item.mangas.chapters.slice().sort((a, b) => b.number - a.number).slice(0, 4) : [],
+      chapters: item.mangas.chapters
+        ? item.mangas.chapters.slice().sort((a, b) => b.number - a.number).slice(0, 4)
+        : [],
       settings: {
         notifications_enabled: item.notifications_enabled,
         last_read_chapter: item.last_read_chapter,
@@ -170,11 +199,9 @@ router.get('/list', async (req: Request, res: Response) => {
 
     res.json({ mangas });
   } catch (error: unknown) {
-    if (error instanceof Error) {
-      res.status(500).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Unknown error' });
-    }
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('List mangas failed', err, { userId: user_id });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -201,22 +228,15 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     res.json({ ...manga, chapters });
   } catch (error: unknown) {
-    if (error instanceof Error) {
-      res.status(500).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Unknown error' });
-    }
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Get manga details failed', err, { mangaId: id });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // Delete manga
-router.delete('/delete', async (req: Request, res: Response) => {
-  const { manga_id, user_id } = req.body;
-
-  if (!manga_id || !user_id) {
-    res.status(400).json({ error: 'manga_id and user_id are required' });
-    return;
-  }
+router.delete('/delete', validateBody(deleteMangaSchema), async (req: Request, res: Response) => {
+  const { manga_id, user_id } = req.body as DeleteMangaInput;
 
   try {
     const { error } = await supabase
@@ -227,25 +247,18 @@ router.delete('/delete', async (req: Request, res: Response) => {
 
     if (error) throw error;
 
+    log.info('Manga deleted', { mangaId: manga_id, userId: user_id });
     res.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error deleting manga:', error);
-    if (error instanceof Error) {
-      res.status(500).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Unknown error' });
-    }
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Delete manga failed', err, { mangaId: manga_id });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // Update manga cover manually (Personalized)
-router.post('/update-cover', async (req: Request, res: Response) => {
-  const { manga_id, user_id, cover_url } = req.body;
-
-  if (!manga_id || !user_id || !cover_url) {
-    res.status(400).json({ error: 'manga_id, user_id, and cover_url are required' });
-    return;
-  }
+router.post('/update-cover', validateBody(updateCoverSchema), async (req: Request, res: Response) => {
+  const { manga_id, user_id, cover_url } = req.body as UpdateCoverInput;
 
   try {
     const { error } = await supabase
@@ -256,25 +269,18 @@ router.post('/update-cover', async (req: Request, res: Response) => {
 
     if (error) throw error;
 
+    log.info('Cover updated', { mangaId: manga_id, userId: user_id });
     res.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error updating cover:', error);
-    if (error instanceof Error) {
-      res.status(500).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Unknown error' });
-    }
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Update cover failed', err, { mangaId: manga_id });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // Update manga title manually (Personalized)
-router.post('/update-title', async (req: Request, res: Response) => {
-  const { manga_id, user_id, title } = req.body;
-
-  if (!manga_id || !user_id || !title) {
-    res.status(400).json({ error: 'manga_id, user_id, and title are required' });
-    return;
-  }
+router.post('/update-title', validateBody(updateTitleSchema), async (req: Request, res: Response) => {
+  const { manga_id, user_id, title } = req.body as UpdateTitleInput;
 
   try {
     const { error } = await supabase
@@ -285,25 +291,18 @@ router.post('/update-title', async (req: Request, res: Response) => {
 
     if (error) throw error;
 
+    log.info('Title updated', { mangaId: manga_id, userId: user_id });
     res.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error updating title:', error);
-    if (error instanceof Error) {
-      res.status(500).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Unknown error' });
-    }
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Update title failed', err, { mangaId: manga_id });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // Update reading status
-router.post('/update-status', async (req: Request, res: Response) => {
-  const { manga_id, user_id, status } = req.body;
-
-  if (!manga_id || !user_id || !status) {
-    res.status(400).json({ error: 'manga_id, user_id, and status are required' });
-    return;
-  }
+router.post('/update-status', validateBody(updateStatusSchema), async (req: Request, res: Response) => {
+  const { manga_id, user_id, status } = req.body as UpdateStatusInput;
 
   try {
     const { error } = await supabase
@@ -314,14 +313,12 @@ router.post('/update-status', async (req: Request, res: Response) => {
 
     if (error) throw error;
 
+    log.info('Status updated', { mangaId: manga_id, userId: user_id, status });
     res.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error updating status:', error);
-    if (error instanceof Error) {
-      res.status(500).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Unknown error' });
-    }
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Update status failed', err, { mangaId: manga_id });
+    res.status(500).json({ error: err.message });
   }
 });
 

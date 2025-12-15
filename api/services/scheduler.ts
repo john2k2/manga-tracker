@@ -2,15 +2,18 @@ import cron from 'node-cron';
 import webpush from 'web-push';
 import { supabase } from '../lib/supabase.js';
 import { scrapeManga } from './scraper.js';
+import { logger } from '../lib/logger.js';
 import type { ScrapedChapter } from './scraper.js';
 
+// Create child logger for scheduler context
+const log = logger.child({ service: 'scheduler' });
+
 export function startScheduler() {
-  console.log('⏳ Starting update scheduler (runs every 6 hours)...');
+  log.info('Scheduler starting', { interval: 'every 6 hours' });
 
   // Schedule task to run every 6 hours
-  // Format: Minute Hour Day Month DayOfWeek
   cron.schedule('0 */6 * * *', async () => {
-    console.log('⏰ Running scheduled update check...');
+    log.info('Scheduled update check triggered');
     await checkAllMangas();
   });
 }
@@ -23,9 +26,18 @@ interface MangaChapter {
   release_date: string;
 }
 
+interface SchedulerManga {
+  id: string;
+  title: string;
+  url: string;
+  chapters: MangaChapter[];
+  user_manga_settings: MangaSettings[];
+}
+
 export async function checkAllMangas() {
-  console.log('Checking for manga updates...');
-  
+  const startTime = Date.now();
+  logger.scheduler.start('checkAllMangas');
+
   try {
     const { data: mangas, error } = await supabase
       .from('mangas')
@@ -38,107 +50,129 @@ export async function checkAllMangas() {
       `);
 
     if (error) {
-      console.error('Error fetching mangas for update:', error);
+      log.error('Error fetching mangas for update', error);
       return;
     }
 
     if (!mangas || mangas.length === 0) {
-      console.log('No mangas to check.');
+      log.info('No mangas to check');
       return;
     }
 
-    console.log(`Found ${mangas.length} mangas to check.`);
+    log.info('Starting manga checks', { totalMangas: mangas.length });
 
-    for (const manga of mangas) {
+    let checked = 0;
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const rawManga of mangas) {
+      const manga = rawManga as unknown as SchedulerManga;
+
       try {
-        // Optimization 1: Skip if NO ONE is reading it
-        // We consider active if status is 'reading' or 'plan_to_read'
-        const settings = (manga.user_manga_settings as unknown as MangaSettings[]) || [];
+        // Optimization 1: Skip if NO ONE is actively reading
+        const settings = manga.user_manga_settings || [];
         const activeReaders = settings.filter(s => ['reading', 'plan_to_read'].includes(s.reading_status));
-        
+
         if (activeReaders.length === 0 && settings.length > 0) {
-             console.log(`⏭️ Skipping ${manga.title}. All users dropped/completed/held.`);
-             continue;
+          logger.scheduler.skip(manga.title, 'no active readers');
+          skipped++;
+          continue;
         }
 
         // Optimization 2: 7-day rule
-        // Smart Check: Only check if it's been 7 days since the last chapter release
-        // If no chapters exist, we check anyway.
-        const chapters = (manga.chapters as unknown as MangaChapter[]) || [];
+        const chapters = manga.chapters || [];
         if (chapters.length > 0) {
-            // Find the latest release date
-            const latestDateStr = chapters.sort((a, b) => new Date(b.release_date).getTime() - new Date(a.release_date).getTime())[0]?.release_date;
-            
-            if (latestDateStr) {
-                const latestDate = new Date(latestDateStr);
-                const nextCheckDate = new Date(latestDate);
-                nextCheckDate.setDate(latestDate.getDate() + 7); // Add 7 days
-                
-                // Allow a small buffer (e.g. check 6 hours before the exact 7 days to catch it early)
-                nextCheckDate.setHours(nextCheckDate.getHours() - 6);
+          const sortedChapters = [...chapters].sort(
+            (a, b) => new Date(b.release_date).getTime() - new Date(a.release_date).getTime()
+          );
+          const latestDateStr = sortedChapters[0]?.release_date;
 
-                if (new Date() < nextCheckDate) {
-                    console.log(`⏭️ Skipping ${manga.title}. Next expected chapter around ${nextCheckDate.toDateString()}`);
-                    continue;
-                }
+          if (latestDateStr) {
+            const latestDate = new Date(latestDateStr);
+            const nextCheckDate = new Date(latestDate);
+            nextCheckDate.setDate(latestDate.getDate() + 7);
+            nextCheckDate.setHours(nextCheckDate.getHours() - 6); // 6 hour buffer
+
+            if (new Date() < nextCheckDate) {
+              logger.scheduler.skip(
+                manga.title,
+                `next expected ${nextCheckDate.toDateString()}`
+              );
+              skipped++;
+              continue;
             }
+          }
         }
 
-        console.log(`Checking ${manga.title} (${manga.url})...`);
+        log.debug('Checking manga', { title: manga.title, url: manga.url });
         const scrapedData = await scrapeManga(manga.url);
 
         if (scrapedData.chapters.length > 0) {
-           // Get existing chapters to compare
           const { data: existingChapters } = await supabase
-             .from('chapters')
-             .select('number')
-             .eq('manga_id', manga.id);
+            .from('chapters')
+            .select('number')
+            .eq('manga_id', manga.id);
 
-           const existingNumbers = new Set(existingChapters?.map((c) => c.number) || []);
-           const newChapters = scrapedData.chapters.filter((c) => !existingNumbers.has(c.number));
+          const existingNumbers = new Set(existingChapters?.map((c) => c.number) || []);
+          const newChapters = scrapedData.chapters.filter((c) => !existingNumbers.has(c.number));
 
-           if (newChapters.length > 0) {
-             console.log(`✨ Found ${newChapters.length} new chapters for ${manga.title}!`);
-             
-             // Insert new chapters
-             const chaptersToInsert = newChapters.map((c) => ({
-               manga_id: manga.id,
-               number: c.number,
-               title: c.title,
-               url: c.url,
-               release_date: c.release_date || new Date().toISOString()
-             }));
+          if (newChapters.length > 0) {
+            logger.scheduler.newChapters(manga.title, newChapters.length);
 
-             await supabase.from('chapters').upsert(chaptersToInsert, { onConflict: 'manga_id, number' });
+            const chaptersToInsert = newChapters.map((c) => ({
+              manga_id: manga.id,
+              number: c.number,
+              title: c.title,
+              url: c.url,
+              release_date: c.release_date || new Date().toISOString()
+            }));
 
-             // Send notifications
-             await sendNotifications(manga, newChapters);
-           } else {
-             console.log(`No new chapters for ${manga.title}.`);
-           }
+            await supabase.from('chapters').upsert(chaptersToInsert, {
+              onConflict: 'manga_id, number'
+            });
+
+            await sendNotifications(manga, newChapters);
+            updated++;
+          } else {
+            log.debug('No new chapters', { title: manga.title });
+          }
         }
-        
-        // Update "updated_at" timestamp of the manga to show it was checked
-        await supabase.from('mangas').update({ updated_at: new Date().toISOString() }).eq('id', manga.id);
 
-        // Be nice to the servers, wait a bit between requests
+        // Update timestamp
+        await supabase
+          .from('mangas')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', manga.id);
+
+        checked++;
+
+        // Rate limiting - 5 seconds between requests
         await new Promise((resolve) => setTimeout(resolve, 5000));
 
       } catch (err) {
-        console.error(`Failed to update ${manga.title}:`, err);
+        const error = err instanceof Error ? err : new Error(String(err));
+        log.error('Failed to update manga', error, { title: manga.title });
+        failed++;
       }
     }
-    console.log('✅ Update check complete.');
+
+    const duration = Date.now() - startTime;
+    logger.scheduler.complete('checkAllMangas', updated, duration);
+
+    log.info('Update check complete', {
+      total: mangas.length,
+      checked,
+      updated,
+      skipped,
+      failed,
+      durationMs: duration
+    });
 
   } catch (err) {
-    console.error('Fatal error in scheduler:', err);
+    const error = err instanceof Error ? err : new Error(String(err));
+    log.error('Fatal error in scheduler', error);
   }
-}
-
-interface SchedulerManga {
-  id: string;
-  title: string;
-  url: string;
 }
 
 interface UserWithToken {
@@ -150,55 +184,80 @@ interface UserMangaSettingsWithUser {
   users: UserWithToken | null;
 }
 
-async function sendNotifications(manga: SchedulerManga, newChapters: ScrapedChapter[]) {
-    try {
-        // 1. Get users watching this manga with notifications enabled
-        // We need to use !inner or similar if we wanted to filter by user properties, but here we filter by setting.
-        // The relationship is: user_manga_settings.user_id -> users.id
-        const { data, error } = await supabase
-            .from('user_manga_settings')
-            .select(`
-                user_id,
-                users (
-                    notification_token
-                )
-            `)
-            .eq('manga_id', manga.id)
-            .eq('notifications_enabled', true);
+interface NotifiableManga {
+  id: string;
+  title: string;
+}
 
-        if (error) {
-            console.error('Error fetching subscribers:', error);
-            return;
-        }
+async function sendNotifications(manga: NotifiableManga, newChapters: ScrapedChapter[]) {
+  try {
+    const { data, error } = await supabase
+      .from('user_manga_settings')
+      .select(`
+        user_id,
+        users (
+          notification_token
+        )
+      `)
+      .eq('manga_id', manga.id)
+      .eq('notifications_enabled', true);
 
-        const settings = (data ?? []) as unknown as UserMangaSettingsWithUser[];
-
-        if (settings.length === 0) return;
-
-        console.log(`Sending notifications to ${settings.length} users...`);
-
-        const latestChapter = newChapters[0]; 
-        const notificationPayload = JSON.stringify({
-            title: `New Chapter: ${manga.title}`,
-            body: `Chapter ${latestChapter.number} is now available!`,
-            icon: '/icon-192x192.png',
-            url: `/manga/${manga.id}`
-        });
-
-        for (const item of settings) {
-            const user = item.users;
-            if (user && user.notification_token) {
-                try {
-                    const subscription = JSON.parse(user.notification_token);
-                    await webpush.sendNotification(subscription, notificationPayload);
-                    console.log(`🔔 Notification sent to user ${item.user_id}`);
-                } catch (pushError) {
-                    console.error(`Failed to send notification to user ${item.user_id}`, pushError);
-                }
-            }
-        }
-
-    } catch (err) {
-        console.error('Error in sendNotifications:', err);
+    if (error) {
+      log.error('Error fetching subscribers', error, { mangaId: manga.id });
+      return;
     }
+
+    const settings = (data ?? []) as unknown as UserMangaSettingsWithUser[];
+
+    if (settings.length === 0) {
+      log.debug('No subscribers for manga', { mangaId: manga.id });
+      return;
+    }
+
+    log.info('Sending notifications', {
+      manga: manga.title,
+      subscribers: settings.length,
+      chapters: newChapters.length
+    });
+
+    const latestChapter = newChapters[0];
+    const notificationPayload = JSON.stringify({
+      title: `New Chapter: ${manga.title}`,
+      body: `Chapter ${latestChapter.number} is now available!`,
+      icon: '/icon-192x192.png',
+      url: `/manga/${manga.id}`
+    });
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const item of settings) {
+      const user = item.users;
+      if (user?.notification_token) {
+        try {
+          const subscription = JSON.parse(user.notification_token);
+          await webpush.sendNotification(subscription, notificationPayload);
+          sent++;
+          log.debug('Notification sent', { userId: item.user_id });
+        } catch (pushError) {
+          const error = pushError instanceof Error ? pushError : new Error(String(pushError));
+          log.warn('Failed to send notification', {
+            userId: item.user_id,
+            error: error.message
+          });
+          failed++;
+        }
+      }
+    }
+
+    log.info('Notifications complete', {
+      manga: manga.title,
+      sent,
+      failed
+    });
+
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    log.error('Error in sendNotifications', error);
+  }
 }

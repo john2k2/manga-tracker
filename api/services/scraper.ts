@@ -2,6 +2,7 @@ import axios from 'axios';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 import { supabase } from '../lib/supabase.js';
+import { logger } from '../lib/logger.js';
 
 dotenv.config();
 
@@ -9,6 +10,9 @@ const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || '');
+
+// Create child logger for scraper context
+const log = logger.child({ service: 'scraper' });
 
 export interface ScrapedChapter {
   number: number;
@@ -37,14 +41,14 @@ export async function searchManga(query: string): Promise<SearchResult[]> {
   if (!FIRECRAWL_API_KEY) throw new Error('FIRECRAWL_API_KEY is missing');
 
   try {
-    console.log(`🔍 Searching for: ${query}`);
+    log.info('Search started', { query });
     const response = await axios.post(
       'https://api.firecrawl.dev/v1/search',
       {
-        query: `${query} manga online capitulos`, // Optimize query for manga sites
+        query: `${query} manga online capitulos`,
         limit: 5,
-        lang: 'es', // Prefer Spanish results since the user speaks Spanish
-        scrapeOptions: { formats: ['markdown'] } // Minimal scrape to save tokens? Actually search returns snippets.
+        lang: 'es',
+        scrapeOptions: { formats: ['markdown'] }
       },
       {
         headers: {
@@ -55,20 +59,21 @@ export async function searchManga(query: string): Promise<SearchResult[]> {
     );
 
     if (!response.data.success) {
-       console.warn('Firecrawl search failed:', response.data);
-       return [];
+      log.warn('Firecrawl search failed', { response: response.data });
+      return [];
     }
 
-    // Map Firecrawl results to our format
-    // Firecrawl search returns { data: [ { url, title, description, ... } ] }
-    return response.data.data.map((item: { title: string; url: string; description?: string }) => ({
+    const results = response.data.data.map((item: { title: string; url: string; description?: string }) => ({
       title: item.title || 'Sin título',
       url: item.url,
       description: item.description
     }));
 
+    log.info('Search completed', { query, resultCount: results.length });
+    return results;
+
   } catch (error) {
-    console.error('Search error:', error);
+    log.error('Search failed', error, { query });
     return [];
   }
 }
@@ -79,12 +84,10 @@ function getScrapeOptions(url: string) {
   let onlyMainContent = true;
 
   if (domain.includes('manhwaweb.com')) {
-    // ManhwaWeb specific: Click "Invetir orden" button to show latest chapters
     actions.push(
       { type: "click", selector: "button.bg-blue-700" },
       { type: "wait", milliseconds: 3000 }
     );
-    // Sometimes main content extraction strips the list if it's dynamic
     onlyMainContent = false;
   }
 
@@ -98,11 +101,11 @@ async function getDomainStrategy(domain: string): Promise<string | null> {
       .select('strategy')
       .eq('domain', domain)
       .single();
-    
+
     if (error) return null;
     return data?.strategy || null;
   } catch (error) {
-    console.warn('Failed to fetch domain strategy:', error);
+    log.warn('Failed to fetch domain strategy', { domain, error: String(error) });
     return null;
   }
 }
@@ -114,8 +117,9 @@ async function saveDomainStrategy(domain: string, strategy: 'DIRECT_FETCH' | 'FI
       strategy,
       last_success_at: new Date().toISOString()
     });
+    log.debug('Domain strategy saved', { domain, strategy });
   } catch (error) {
-    console.warn('Failed to save domain strategy:', error);
+    log.warn('Failed to save domain strategy', { domain, error: String(error) });
   }
 }
 
@@ -125,43 +129,49 @@ export async function scrapeManga(url: string): Promise<ScrapedManga> {
 
   const domain = new URL(url).hostname;
   const knownStrategy = await getDomainStrategy(domain);
-  
-  console.log(`🔍 Strategy for ${domain}: ${knownStrategy || 'UNKNOWN'}`);
+  const startTime = Date.now();
+
+  logger.scrape.start(url, knownStrategy || 'UNKNOWN');
 
   // LEVEL 2 OPTIMIZATION: Try Direct Fetch First (Free & Fast)
-  // Skip if we KNOW this domain requires Firecrawl
   if (knownStrategy !== 'FIRECRAWL') {
     try {
-      console.log(`🚀 Trying Level 2: Direct Fetch for ${url}`);
+      log.debug('Trying direct fetch', { url });
       const directHtml = await tryDirectFetch(url);
-      
+
       if (directHtml) {
-        console.log('✅ Direct fetch success! Parsing with Gemini...');
+        log.debug('Direct fetch success, parsing with Gemini', {
+          url,
+          contentLength: directHtml.length
+        });
         const result = await parseWithGemini(directHtml, url, 'html');
-        
-        // Validation: If direct fetch returned no chapters, it's likely an SPA/JavaScript site.
+
         if (result.chapters.length === 0) {
           throw new Error('Direct fetch returned 0 chapters (Likely SPA/JS-rendered content).');
         }
-        
-        // Success! Save strategy
+
         await saveDomainStrategy(domain, 'DIRECT_FETCH');
+        logger.scrape.success(url, 'DIRECT_FETCH', result.chapters.length);
         return result;
       }
     } catch (e) {
-      console.log('⚠️ Direct fetch failed or blocked. Falling back to Firecrawl.', (e as Error).message);
+      const error = e as Error;
+      logger.scrape.fallback(url, 'DIRECT_FETCH', 'FIRECRAWL');
+      log.debug('Direct fetch failed, falling back', {
+        url,
+        reason: error.message
+      });
     }
   } else {
-    console.log('⏭️ Skipping Level 2 because domain is known to require Firecrawl.');
+    log.debug('Skipping direct fetch - domain requires Firecrawl', { domain });
   }
 
   // LEVEL 3 FALLBACK: Firecrawl (Robust but Slower)
   try {
-    console.log(`🐢 Level 3: Firecrawl fallback for ${url}`);
-    
+    log.debug('Using Firecrawl', { url });
+
     const { actions, onlyMainContent } = getScrapeOptions(url);
 
-    // 1. Scrape with Firecrawl
     const firecrawlResponse = await axios.post(
       'https://api.firecrawl.dev/v1/scrape',
       {
@@ -183,48 +193,62 @@ export async function scrapeManga(url: string): Promise<ScrapedManga> {
     }
 
     const markdown = firecrawlResponse.data.data.markdown;
-    console.log(`Firecrawl success. Raw Markdown length: ${markdown.length}`);
+    log.debug('Firecrawl response received', {
+      url,
+      rawLength: markdown.length
+    });
 
-    // 3. Optimize Content
+    // Optimize Content
     const cleanMarkdown = markdown
       .replace(/\n{3,}/g, '\n\n')
       .replace(/!\[.*?\]\(data:image\/.*?\)/g, '[IMAGE_REMOVED]')
       .replace(/(!\[.*?\]\(.*?\)\s*){3,}/g, '\n[MULTIPLE_IMAGES_REMOVED]\n');
 
-    console.log(`Optimized Markdown length: ${cleanMarkdown.length}`);
+    log.debug('Markdown optimized', {
+      url,
+      originalLength: markdown.length,
+      optimizedLength: cleanMarkdown.length
+    });
 
     const result = await parseWithGemini(cleanMarkdown, url, 'markdown');
-    
-    // If we got here, Firecrawl worked. Save strategy.
+
     if (result.chapters.length > 0) {
-        await saveDomainStrategy(domain, 'FIRECRAWL');
+      await saveDomainStrategy(domain, 'FIRECRAWL');
     }
-    
+
+    const duration = Date.now() - startTime;
+    logger.scrape.success(url, 'FIRECRAWL', result.chapters.length);
+    log.info('Scrape completed', {
+      url,
+      strategy: 'FIRECRAWL',
+      chapters: result.chapters.length,
+      durationMs: duration
+    });
+
     return result;
 
   } catch (error: unknown) {
-    if (typeof error === 'object' && error !== null) {
-      const maybeError = error as { message?: string; response?: { data?: unknown } };
-      console.error('Scraping error:', maybeError.response?.data || maybeError.message);
-      throw new Error(`Scraping failed: ${maybeError.message || 'Unknown error'}`);
-    }
+    const duration = Date.now() - startTime;
+    const err = error instanceof Error ? error : new Error(String(error));
 
-    console.error('Scraping error:', error);
-    throw new Error('Scraping failed: Unknown error');
+    logger.scrape.fail(url, knownStrategy || 'FIRECRAWL', err);
+    log.error('Scrape failed', err, { url, durationMs: duration });
+
+    throw new Error(`Scraping failed: ${err.message}`);
   }
 }
 
 // Helper to fetch HTML directly mimicking a real browser
 async function tryDirectFetch(url: string): Promise<string | null> {
   const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5'
-      },
-      timeout: 5000
-    });
-    
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5'
+    },
+    timeout: 5000
+  });
+
   if (response.status === 200 && response.data && typeof response.data === 'string') {
     if (response.data.includes('Just a moment...') || response.data.includes('Enable JavaScript')) {
       throw new Error('Cloudflare Challenge detected');
@@ -236,19 +260,17 @@ async function tryDirectFetch(url: string): Promise<string | null> {
 }
 
 async function parseWithGemini(content: string, url: string, type: 'html' | 'markdown'): Promise<ScrapedManga> {
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash-exp",
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    });
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash-exp",
+    generationConfig: {
+      responseMimeType: "application/json"
+    }
+  });
 
-    // Truncate content differently based on type
-    // HTML is more verbose, so we might need more chars, but Gemini handles it well.
-    const limit = type === 'html' ? 200000 : 150000;
-    const truncatedContent = content.substring(0, limit);
+  const limit = type === 'html' ? 200000 : 150000;
+  const truncatedContent = content.substring(0, limit);
 
-    const prompt = `
+  const prompt = `
       You are a manga scraper parser. Extract information from the provided ${type} content.
       
       Return EXACTLY this JSON structure:
@@ -275,27 +297,40 @@ async function parseWithGemini(content: string, url: string, type: 'html' | 'mar
       ${truncatedContent}
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    const parsedData = JSON.parse(text) as ScrapedManga;
-    
-    if (!parsedData.chapters || !Array.isArray(parsedData.chapters)) {
-        console.warn('Gemini returned invalid structure, fixing...', parsedData);
-        parsedData.chapters = [];
-    }
+  const startTime = Date.now();
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+  const geminiDuration = Date.now() - startTime;
 
-    // Validate and fix dates
-    parsedData.chapters = parsedData.chapters.map((chapter) => {
-        const date = chapter.release_date;
+  const parsedData = JSON.parse(text) as ScrapedManga;
 
-        if (date === 'YYYY-MM-DD' || !date || isNaN(Date.parse(date))) {
-            return { ...chapter, release_date: undefined };
-        }
-        return chapter;
+  if (!parsedData.chapters || !Array.isArray(parsedData.chapters)) {
+    log.warn('Gemini returned invalid structure', {
+      url,
+      type,
+      hasChapters: !!parsedData.chapters
     });
-    
-    console.log(`Gemini parsed (${type}): ${parsedData.title}, ${parsedData.chapters.length} chapters`);
-    return parsedData;
+    parsedData.chapters = [];
+  }
+
+  // Validate and fix dates
+  parsedData.chapters = parsedData.chapters.map((chapter) => {
+    const date = chapter.release_date;
+
+    if (date === 'YYYY-MM-DD' || !date || isNaN(Date.parse(date))) {
+      return { ...chapter, release_date: undefined };
+    }
+    return chapter;
+  });
+
+  log.debug('Gemini parsing completed', {
+    url,
+    type,
+    title: parsedData.title,
+    chapterCount: parsedData.chapters.length,
+    geminiDurationMs: geminiDuration
+  });
+
+  return parsedData;
 }
