@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { ShieldCheck, ShieldAlert, Activity, CheckCircle, XCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
@@ -19,7 +19,7 @@ interface SiteStats {
 interface ValidationResult {
   isValid: boolean;
   report: string[];
-  data: unknown;
+  data: Record<string, unknown>;
 }
 
 interface IssueReport {
@@ -58,17 +58,17 @@ export default function Admin() {
   };
 
   const fetchReports = async () => {
-      try {
-          const res = await fetch(`${API_URL}/api/admin/reports`);
-          const data = await res.json();
-          if (data.reports) setReports(data.reports);
-      } catch (error) {
-          console.error('Error fetching reports:', error);
-          toast.error('Error cargando reportes');
-      }
+    try {
+      const res = await fetch(`${API_URL}/api/admin/reports`);
+      const data = await res.json();
+      if (data.reports) setReports(data.reports);
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      toast.error('Error cargando reportes');
+    }
   };
 
-  const handleValidate = async (e: React.FormEvent) => {
+  const handleValidate = async (e: FormEvent) => {
     e.preventDefault();
     if (!urlToValidate) return;
 
@@ -99,7 +99,7 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-transparent px-4 py-10 text-slate-900 dark:text-slate-50 sm:px-8">
       <div className="mx-auto max-w-6xl space-y-8">
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-3xl"
@@ -108,7 +108,7 @@ export default function Admin() {
           Panel de administración
         </motion.h1>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -136,8 +136,8 @@ export default function Admin() {
                       <span className={clsx(
                         "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
                         stat.success_rate >= 90 ? "bg-emerald-100 text-emerald-800" :
-                        stat.success_rate >= 70 ? "bg-amber-100 text-amber-800" :
-                        "bg-red-100 text-red-800"
+                          stat.success_rate >= 70 ? "bg-amber-100 text-amber-800" :
+                            "bg-red-100 text-red-800"
                       )}>
                         {stat.success_rate}%
                       </span>
@@ -148,16 +148,16 @@ export default function Admin() {
                   </tr>
                 ))}
                 {stats.length === 0 && (
-                    <tr>
-                        <td colSpan={5} className="px-6 py-4 text-center text-sm text-slate-500">Todavía no hay datos de scraping.</td>
-                    </tr>
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-slate-500">Todavía no hay datos de scraping.</td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -186,7 +186,7 @@ export default function Admin() {
           </form>
 
           {validationResult && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               className={clsx("rounded-2xl border p-4", validationResult.isValid ? "border-emerald-200/70 bg-emerald-50/70 dark:border-emerald-500/30 dark:bg-emerald-950/40" : "border-red-200/70 bg-red-50/70 dark:border-red-500/30 dark:bg-red-950/40")}
@@ -206,8 +206,8 @@ export default function Admin() {
                       line.includes("ERROR")
                         ? "text-red-700 dark:text-red-300"
                         : line.includes("WARNING")
-                        ? "text-amber-700 dark:text-amber-300"
-                        : "text-slate-700 dark:text-slate-200"
+                          ? "text-amber-700 dark:text-amber-300"
+                          : "text-slate-700 dark:text-slate-200"
                     )}
                   >
                     {line}
@@ -215,61 +215,61 @@ export default function Admin() {
                 ))}
               </ul>
               {validationResult.data && (
-                  <div className="mt-4 max-h-60 overflow-auto rounded-2xl bg-slate-900 px-4 py-3 text-xs font-mono text-slate-50">
-                      <pre>{JSON.stringify(validationResult.data, null, 2)}</pre>
-                  </div>
+                <div className="mt-4 max-h-60 overflow-auto rounded-2xl bg-slate-900 px-4 py-3 text-xs font-mono text-slate-50">
+                  <pre>{JSON.stringify(validationResult.data, null, 2)}</pre>
+                </div>
               )}
             </motion.div>
           )}
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-black/40"
         >
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                <ShieldAlert className="h-5 w-5 text-red-500" />
-                Reportes de usuarios
-            </h2>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                    <thead>
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Fecha</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Tipo</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Manga</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Usuario</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Descripción</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white/60 dark:divide-slate-800 dark:bg-transparent">
-                        {reports.map((report) => (
-                            <tr key={report.id}>
-                                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">{new Date(report.created_at).toLocaleDateString()}</td>
-                                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium capitalize text-slate-900 dark:text-slate-50">{report.issue_type?.replace('_', ' ') || 'Unknown'}</td>
-                                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700 hover:underline dark:text-slate-200">
-                                    <a href={report.mangas?.url} target="_blank" rel="noreferrer">{report.mangas?.title || 'Unknown Manga'}</a>
-                                </td>
-                                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">{report.users?.email}</td>
-                                <td className="max-w-xs px-6 py-4 text-sm text-slate-700 truncate dark:text-slate-200" title={report.description}>{report.description}</td>
-                                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">
-                                    <span className={clsx("inline-flex px-2 text-xs leading-5 font-semibold rounded-full", report.status === 'open' ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800")}>
-                                        {report.status === 'open' ? 'Abierto' : 'Cerrado'}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                        {reports.length === 0 && (
-                            <tr>
-                                <td colSpan={6} className="px-6 py-4 text-center text-sm text-slate-500">Todavía no hay reportes.</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            <ShieldAlert className="h-5 w-5 text-red-500" />
+            Reportes de usuarios
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Tipo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Manga</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Usuario</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Descripción</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white/60 dark:divide-slate-800 dark:bg-transparent">
+                {reports.map((report) => (
+                  <tr key={report.id}>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">{new Date(report.created_at).toLocaleDateString()}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium capitalize text-slate-900 dark:text-slate-50">{report.issue_type?.replace('_', ' ') || 'Unknown'}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700 hover:underline dark:text-slate-200">
+                      <a href={report.mangas?.url} target="_blank" rel="noreferrer">{report.mangas?.title || 'Unknown Manga'}</a>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">{report.users?.email}</td>
+                    <td className="max-w-xs px-6 py-4 text-sm text-slate-700 truncate dark:text-slate-200" title={report.description}>{report.description}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-300">
+                      <span className={clsx("inline-flex px-2 text-xs leading-5 font-semibold rounded-full", report.status === 'open' ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800")}>
+                        {report.status === 'open' ? 'Abierto' : 'Cerrado'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {reports.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-slate-500">Todavía no hay reportes.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </motion.div>
       </div>
     </div>

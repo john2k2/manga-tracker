@@ -13,7 +13,7 @@ export default function Login() {
   useEffect(() => {
     document.title = 'Manga Tracker – Iniciar sesión';
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         navigate('/');
       }
@@ -24,14 +24,14 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-md rounded-3xl border border-slate-200/70 bg-white/85 p-8 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-950/85 dark:shadow-black/20"
       >
         <div className="mb-6 text-center">
-          <motion.div 
+          <motion.div
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
@@ -39,7 +39,7 @@ export default function Login() {
           >
             <span className="text-lg font-semibold">MT</span>
           </motion.div>
-          <motion.h1 
+          <motion.h1
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -47,7 +47,7 @@ export default function Login() {
           >
             Manga Tracker
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4 }}

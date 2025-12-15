@@ -28,3 +28,13 @@ dist-ssr
 *.sln
 *.sw?
 .vite
+
+# Debug files
+debug_*.html
+debug_*.md
+
+# Trae IDE
+.trae
+
+# Dev artifacts
+dev-dist

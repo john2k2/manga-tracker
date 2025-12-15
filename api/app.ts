@@ -44,7 +44,7 @@ app.use('/api/cron', cronRoutes)
  */
 app.use(
   '/api/health',
-  (req: Request, res: Response): void => {
+  (_req: Request, res: Response): void => {
     res.status(200).json({
       success: true,
       message: 'ok',
@@ -55,8 +55,9 @@ app.use(
 /**
  * error handler middleware
  */
-app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
-  void _next
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('API Error:', error.message);
   res.status(500).json({
     success: false,
     error: 'Server internal error',
@@ -66,7 +67,7 @@ app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
 /**
  * 404 handler
  */
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     error: 'API not found',

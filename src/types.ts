@@ -1,18 +1,10 @@
-export interface Chapter {
-  number: number;
-  url: string;
-  release_date: string;
-}
+/**
+ * Legacy types file - Re-exports from new types module for backwards compatibility
+ * @deprecated Use imports from '@/types' or '../types' instead
+ */
 
-export interface Manga {
-  id: string;
-  title: string;
-  cover_image: string;
-  url: string;
-  chapters: Chapter[];
-  settings: {
-    notifications_enabled: boolean;
-    last_read_chapter: number;
-    reading_status: 'reading' | 'completed' | 'plan_to_read' | 'dropped' | 'on_hold';
-  };
-}
+export type {
+  Chapter,
+  MangaWithSettings as Manga,
+  ReadingStatus
+} from './types/index';
