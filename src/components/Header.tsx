@@ -6,7 +6,8 @@ import { useTheme } from '../hooks/useTheme';
 import { PushNotificationManager } from './PushNotificationManager';
 import clsx from 'clsx';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// In production, use relative URLs. In dev, use VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 interface HeaderProps {
   onLogout: () => void;
@@ -95,14 +96,16 @@ export function Header({ onLogout, onRefreshComplete }: HeaderProps) {
             onClick={handleManualUpdate}
             disabled={updating}
             className={clsx(
-              "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-2 text-xs font-medium transition-all sm:px-3",
+              "inline-flex items-center justify-center rounded-full border font-medium transition-all",
+              "h-9 w-9 sm:w-auto sm:gap-1.5 sm:px-3", // Square on mobile, pill on desktop
+              "text-xs",
               updating
                 ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
-                : "border-indigo-200 bg-indigo-50 text-indigo-600 hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/60"
+                : "border-indigo-200 bg-indigo-50 text-indigo-600 hover:border-indigo-300 hover:bg-indigo-100 active:scale-95 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/60"
             )}
             title={updating ? 'Actualizando...' : 'Buscar nuevos capítulos'}
           >
-            <RefreshCw size={14} className={clsx(updating && "animate-spin")} />
+            <RefreshCw size={16} className={clsx(updating && "animate-spin")} />
             <span className="hidden sm:inline">{updating ? 'Buscando...' : 'Actualizar'}</span>
           </button>
           <PushNotificationManager />
