@@ -16,6 +16,7 @@ interface MangaCardProps {
   onUpdateCover: (id: string, newUrl: string) => Promise<void>;
   onUpdateTitle: (id: string, newTitle: string) => Promise<void>;
   onUpdateStatus: (id: string, status: string) => Promise<void>;
+  onMarkRead: (mangaId: string, chapterNumber: number) => Promise<void>;
 }
 
 export function MangaCard({
@@ -24,7 +25,8 @@ export function MangaCard({
   onReport,
   onUpdateCover,
   onUpdateTitle,
-  onUpdateStatus
+  onUpdateStatus,
+  onMarkRead
 }: MangaCardProps) {
   const handleUpdateCover = (newUrl: string) => onUpdateCover(manga.id, newUrl);
   const handleUpdateTitle = (newTitle: string) => onUpdateTitle(manga.id, newTitle);
@@ -106,7 +108,11 @@ export function MangaCard({
             <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
               Últimos capítulos
             </h4>
-            <ChapterList chapters={manga.chapters} />
+            <ChapterList
+              chapters={manga.chapters}
+              lastReadChapter={manga.settings.last_read_chapter}
+              onMarkRead={(chapterNum) => onMarkRead(manga.id, chapterNum)}
+            />
           </div>
         </div>
       </div>

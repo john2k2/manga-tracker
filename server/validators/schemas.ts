@@ -66,6 +66,12 @@ export const updateStatusSchema = z.object({
     status: readingStatusSchema
 });
 
+export const markReadSchema = z.object({
+    manga_id: uuidSchema,
+    user_id: uuidSchema,
+    chapter_number: z.number().int().positive('Chapter number must be positive')
+});
+
 export const searchSchema = z.object({
     query: z.string().min(2, 'Query must be at least 2 characters').max(200, 'Query too long')
 });
@@ -109,6 +115,7 @@ export type DeleteMangaInput = z.infer<typeof deleteMangaSchema>;
 export type UpdateCoverInput = z.infer<typeof updateCoverSchema>;
 export type UpdateTitleInput = z.infer<typeof updateTitleSchema>;
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
+export type MarkReadInput = z.infer<typeof markReadSchema>;
 export type SearchInput = z.infer<typeof searchSchema>;
 export type ReportIssueInput = z.infer<typeof reportIssueSchema>;
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;

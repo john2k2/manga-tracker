@@ -11,6 +11,7 @@ import {
   updateCoverSchema,
   updateTitleSchema,
   updateStatusSchema,
+  markReadSchema,
   searchSchema,
   listMangasQuerySchema,
   type AddMangaInput,
@@ -18,6 +19,7 @@ import {
   type UpdateCoverInput,
   type UpdateTitleInput,
   type UpdateStatusInput,
+  type MarkReadInput,
   type SearchInput
 } from '../validators/schemas.js';
 
@@ -318,6 +320,42 @@ router.post('/update-status', validateBody(updateStatusSchema), async (req: Requ
   } catch (error: unknown) {
     const err = error instanceof Error ? error : new Error(String(error));
     log.error('Update status failed', err, { mangaId: manga_id });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mark chapter as read
+router.post('/mark-read', validateBody(markReadSchema), async (req: Request, res: Response) => {
+  const { manga_id, user_id, chapter_number } = req.body as MarkReadInput;
+
+  try {
+    // Only update if the new chapter is greater than the current one
+    const { data: current } = await supabase
+      .from('user_manga_settings')
+      .select('last_read_chapter')
+      .eq('user_id', user_id)
+      .eq('manga_id', manga_id)
+      .single();
+
+    const currentChapter = current?.last_read_chapter || 0;
+
+    // Always update to the higher chapter
+    if (chapter_number > currentChapter) {
+      const { error } = await supabase
+        .from('user_manga_settings')
+        .update({ last_read_chapter: chapter_number })
+        .eq('user_id', user_id)
+        .eq('manga_id', manga_id);
+
+      if (error) throw error;
+
+      log.info('Chapter marked as read', { mangaId: manga_id, userId: user_id, chapter: chapter_number });
+    }
+
+    res.json({ success: true, last_read_chapter: Math.max(chapter_number, currentChapter) });
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Mark read failed', err, { mangaId: manga_id });
     res.status(500).json({ error: err.message });
   }
 });

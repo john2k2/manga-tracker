@@ -164,6 +164,35 @@ export default function Home() {
     }
   };
 
+  const handleMarkRead = async (mangaId: string, chapterNumber: number) => {
+    if (!user) return;
+    try {
+      await axios.post('/api/manga/mark-read', {
+        manga_id: mangaId,
+        user_id: user.id,
+        chapter_number: chapterNumber
+      });
+
+      // Optimistic update
+      setMangas(mangas.map(m =>
+        m.id === mangaId
+          ? {
+            ...m,
+            settings: {
+              ...m.settings,
+              last_read_chapter: Math.max(chapterNumber, m.settings.last_read_chapter || 0)
+            }
+          }
+          : m
+      ));
+      toast.success(`Capítulo ${chapterNumber} marcado como leído`);
+    } catch (error) {
+      console.error('Error marking chapter as read:', error);
+      toast.error('Error al marcar capítulo');
+      throw error;
+    }
+  };
+
   const handleLogout = () => {
     supabase.auth.signOut();
     toast.message('Sesión cerrada. ¡Hasta pronto!');
@@ -198,6 +227,7 @@ export default function Home() {
                   onUpdateCover={handleUpdateCover}
                   onUpdateTitle={handleUpdateTitle}
                   onUpdateStatus={handleUpdateStatus}
+                  onMarkRead={handleMarkRead}
                 />
               ))}
             </AnimatePresence>
