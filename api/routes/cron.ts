@@ -1,7 +1,47 @@
 import { Router } from 'express';
 import { checkAllMangas } from '../services/scheduler.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
+const log = logger.child({ service: 'cron-routes' });
+
+// Simple in-memory rate limiter for manual updates
+let lastManualUpdate: number | null = null;
+const MIN_UPDATE_INTERVAL_MS = 60_000; // 1 minute between manual updates
+
+// Manual update endpoint (for Admin panel)
+router.post('/manual-update', async (_req, res) => {
+    // Basic rate limiting
+    const now = Date.now();
+    if (lastManualUpdate && now - lastManualUpdate < MIN_UPDATE_INTERVAL_MS) {
+        const remainingSeconds = Math.ceil((MIN_UPDATE_INTERVAL_MS - (now - lastManualUpdate)) / 1000);
+        res.status(429).json({
+            error: 'Rate limited',
+            message: `Por favor espera ${remainingSeconds} segundos antes de intentar nuevamente.`,
+            retryAfter: remainingSeconds
+        });
+        return;
+    }
+
+    log.info('Manual update triggered from Admin panel');
+    lastManualUpdate = now;
+
+    try {
+        await checkAllMangas();
+        res.json({
+            success: true,
+            message: '¡Actualización completada!',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error: unknown) {
+        log.error('Manual update failed', error instanceof Error ? error : new Error(String(error)));
+        if (error instanceof Error) {
+            res.status(500).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Error desconocido' });
+        }
+    }
+});
 
 // This endpoint will be called by Vercel Cron
 router.get('/run', async (req, res) => {
@@ -13,7 +53,7 @@ router.get('/run', async (req, res) => {
     }
 
     console.log('🤖 Triggering manual update check via Cron...');
-    
+
     // Run in background (don't wait for it to finish to respond to Vercel)
     // Note: On Vercel serverless, the function might freeze after response.
     // For critical tasks, we should await. For long tasks, we might need a different approach.

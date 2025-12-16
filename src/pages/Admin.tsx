@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ShieldCheck, ShieldAlert, Activity, CheckCircle, XCircle } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Activity, CheckCircle, XCircle, RefreshCw, Zap } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -38,6 +38,8 @@ export default function Admin() {
   const [urlToValidate, setUrlToValidate] = useState('');
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [validating, setValidating] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Manga Tracker – Panel de administración';
@@ -107,6 +109,71 @@ export default function Admin() {
           <Activity className="h-7 w-7 text-slate-500 dark:text-slate-400" />
           Panel de administración
         </motion.h1>
+
+        {/* Manual Update Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-3xl border border-slate-200/80 bg-gradient-to-br from-indigo-50/80 to-violet-50/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur-xl dark:border-slate-700/80 dark:from-indigo-950/40 dark:to-violet-950/40 dark:shadow-black/40"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400">
+                <Zap className="h-5 w-5" />
+                Actualización manual
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Forzar una actualización de todos los mangas ahora.
+                {lastUpdateTime && (
+                  <span className="ml-2 text-xs text-slate-500">
+                    Última: {lastUpdateTime}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                setUpdating(true);
+                try {
+                  const res = await fetch(`${API_URL}/api/cron/manual-update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                  });
+                  const data = await res.json();
+
+                  if (!res.ok) {
+                    if (res.status === 429) {
+                      toast.warning(data.message || 'Esperá un poco antes de intentar de nuevo.');
+                    } else {
+                      throw new Error(data.error || 'Error al actualizar');
+                    }
+                  } else {
+                    toast.success(data.message || '¡Actualización completada!');
+                    setLastUpdateTime(new Date().toLocaleTimeString());
+                    // Refresh stats after update
+                    fetchStats();
+                  }
+                } catch (err) {
+                  console.error('Manual update error:', err);
+                  toast.error(err instanceof Error ? err.message : 'Error al actualizar');
+                } finally {
+                  setUpdating(false);
+                }
+              }}
+              disabled={updating}
+              className={clsx(
+                "flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold transition-all",
+                updating
+                  ? "cursor-not-allowed bg-slate-300 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                  : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-500 hover:to-violet-500 hover:shadow-xl hover:shadow-indigo-500/30 active:scale-95"
+              )}
+            >
+              <RefreshCw className={clsx("h-4 w-4", updating && "animate-spin")} />
+              {updating ? 'Actualizando...' : 'Actualizar Todos'}
+            </button>
+          </div>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

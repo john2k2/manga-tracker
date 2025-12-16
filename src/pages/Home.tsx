@@ -20,7 +20,7 @@ export default function Home() {
 
   // State for reporting issues
   const [reportingMangaId, setReportingMangaId] = useState<string | null>(null);
-  
+
   // State for deleting manga
   const [deletingMangaId, setDeletingMangaId] = useState<string | null>(null);
 
@@ -63,7 +63,7 @@ export default function Home() {
 
   const confirmDeleteManga = async () => {
     if (!deletingMangaId || !user) return;
-    
+
     try {
       await axios.delete('/api/manga/delete', {
         data: {
@@ -88,60 +88,60 @@ export default function Home() {
   const handleUpdateCover = async (mangaId: string, newCoverUrl: string) => {
     if (!user) return;
     try {
-        await axios.post('/api/manga/update-cover', {
-            manga_id: mangaId,
-            user_id: user.id,
-            cover_url: newCoverUrl
-        });
-        
-        // Optimistic update
-        setMangas(mangas.map(m => m.id === mangaId ? { ...m, cover_image: newCoverUrl } : m));
-        toast.success('Portada actualizada');
+      await axios.post('/api/manga/update-cover', {
+        manga_id: mangaId,
+        user_id: user.id,
+        cover_url: newCoverUrl
+      });
+
+      // Optimistic update
+      setMangas(mangas.map(m => m.id === mangaId ? { ...m, cover_image: newCoverUrl } : m));
+      toast.success('Portada actualizada');
     } catch (error) {
-        console.error('Error updating cover:', error);
-        toast.error('Error al actualizar la portada');
-        throw error;
+      console.error('Error updating cover:', error);
+      toast.error('Error al actualizar la portada');
+      throw error;
     }
   };
 
   const handleUpdateTitle = async (mangaId: string, newTitle: string) => {
     if (!user) return;
     try {
-        await axios.post('/api/manga/update-title', {
-            manga_id: mangaId,
-            user_id: user.id,
-            title: newTitle
-        });
-        
-        // Optimistic update
-        setMangas(mangas.map(m => m.id === mangaId ? { ...m, title: newTitle } : m));
-        toast.success('Título actualizado');
+      await axios.post('/api/manga/update-title', {
+        manga_id: mangaId,
+        user_id: user.id,
+        title: newTitle
+      });
+
+      // Optimistic update
+      setMangas(mangas.map(m => m.id === mangaId ? { ...m, title: newTitle } : m));
+      toast.success('Título actualizado');
     } catch (error) {
-        console.error('Error updating title:', error);
-        toast.error('Error al actualizar el título');
-        throw error;
+      console.error('Error updating title:', error);
+      toast.error('Error al actualizar el título');
+      throw error;
     }
   };
 
   const handleUpdateStatus = async (mangaId: string, status: string) => {
     if (!user) return;
     try {
-        await axios.post('/api/manga/update-status', {
-            manga_id: mangaId,
-            user_id: user.id,
-            status: status
-        });
-        
-        // Optimistic update
-        setMangas(mangas.map(m => m.id === mangaId ? { 
-            ...m, 
-            settings: { ...m.settings, reading_status: status as Manga['settings']['reading_status'] } 
-        } : m));
-        toast.success('Estado actualizado');
+      await axios.post('/api/manga/update-status', {
+        manga_id: mangaId,
+        user_id: user.id,
+        status: status
+      });
+
+      // Optimistic update
+      setMangas(mangas.map(m => m.id === mangaId ? {
+        ...m,
+        settings: { ...m.settings, reading_status: status as Manga['settings']['reading_status'] }
+      } : m));
+      toast.success('Estado actualizado');
     } catch (error) {
-        console.error('Error updating status:', error);
-        toast.error('Error al actualizar el estado');
-        throw error;
+      console.error('Error updating status:', error);
+      toast.error('Error al actualizar el estado');
+      throw error;
     }
   };
 
@@ -149,18 +149,18 @@ export default function Home() {
     if (!reportingMangaId || !user) return;
 
     try {
-        await axios.post('/api/admin/report-issue', {
-            user_id: user.id,
-            manga_id: reportingMangaId,
-            description: data.description,
-            issue_type: data.issueType
-        });
-        
-        toast.success('Reporte enviado. Gracias por avisarnos.');
+      await axios.post('/api/admin/report-issue', {
+        user_id: user.id,
+        manga_id: reportingMangaId,
+        description: data.description,
+        issue_type: data.issueType
+      });
+
+      toast.success('Reporte enviado. Gracias por avisarnos.');
     } catch (error) {
-        console.error('Error reporting issue:', error);
-        toast.error('Error al enviar el reporte');
-        throw error;
+      console.error('Error reporting issue:', error);
+      toast.error('Error al enviar el reporte');
+      throw error;
     }
   };
 
@@ -168,10 +168,10 @@ export default function Home() {
     supabase.auth.signOut();
     toast.message('Sesión cerrada. ¡Hasta pronto!');
   };
-  
+
   return (
     <div className="min-h-screen pb-20 text-slate-900 transition-colors duration-200 dark:text-slate-50">
-      <Header onLogout={handleLogout} />
+      <Header onLogout={handleLogout} onRefreshComplete={() => user && fetchMangas(user.id)} />
 
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
         <AddMangaForm onAddManga={handleAddManga} />
@@ -184,20 +184,20 @@ export default function Home() {
         ) : mangas.length === 0 ? (
           <EmptyState />
         ) : (
-          <motion.div 
+          <motion.div
             layout
             className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2"
           >
             <AnimatePresence mode='popLayout'>
               {mangas.map((manga) => (
-                <MangaCard 
-                  key={manga.id} 
-                  manga={manga} 
-                  onDelete={handleDeleteManga} 
-                  onReport={(id) => setReportingMangaId(id)} 
-                  onUpdateCover={handleUpdateCover} 
-                  onUpdateTitle={handleUpdateTitle} 
-                  onUpdateStatus={handleUpdateStatus} 
+                <MangaCard
+                  key={manga.id}
+                  manga={manga}
+                  onDelete={handleDeleteManga}
+                  onReport={(id) => setReportingMangaId(id)}
+                  onUpdateCover={handleUpdateCover}
+                  onUpdateTitle={handleUpdateTitle}
+                  onUpdateStatus={handleUpdateStatus}
                 />
               ))}
             </AnimatePresence>
