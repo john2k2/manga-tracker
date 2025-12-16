@@ -30,7 +30,7 @@ export function PushNotificationManager() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-        setUser(user);
+      setUser(user);
     });
 
     if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -48,7 +48,7 @@ export function PushNotificationManager() {
 
     try {
       const registration = await navigator.serviceWorker.ready;
-      
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
@@ -76,18 +76,24 @@ export function PushNotificationManager() {
 
   if (permission === 'denied') {
     return (
-      <div className="flex items-center gap-1.5 rounded-full border border-red-200/70 bg-red-50/70 px-3 py-1 text-xs font-medium text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-200">
-        <BellOff size={14} />
-        Notificaciones bloqueadas
+      <div
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200/70 bg-red-50/70 text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-200 sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1"
+        title="Notificaciones bloqueadas"
+      >
+        <BellOff size={16} />
+        <span className="hidden text-xs font-medium sm:inline">Bloqueadas</span>
       </div>
     );
   }
 
   if (isSubscribed) {
     return (
-      <div className="flex items-center gap-1.5 rounded-full border border-emerald-200/70 bg-emerald-50/70 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-200">
-        <Bell size={14} />
-        Notificaciones activas
+      <div
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200/70 bg-emerald-50/70 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-200 sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1"
+        title="Notificaciones activas"
+      >
+        <Bell size={16} />
+        <span className="hidden text-xs font-medium sm:inline">Activas</span>
       </div>
     );
   }
@@ -96,10 +102,13 @@ export function PushNotificationManager() {
     <button
       onClick={subscribeUser}
       disabled={loading}
-      className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800 disabled:opacity-60"
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 active:scale-95 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800 sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1"
+      title={loading ? 'Activando...' : 'Activar notificaciones'}
     >
-      <Bell size={14} />
-      {loading ? 'Activando...' : 'Activar avisos'}
+      <Bell size={16} />
+      <span className="hidden text-xs font-medium sm:inline">
+        {loading ? 'Activando...' : 'Activar'}
+      </span>
     </button>
   );
 }
