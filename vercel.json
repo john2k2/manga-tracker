@@ -2,7 +2,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 60,
-      "includeFiles": "api/**"
+      "includeFiles": "{api,server}/**"
     }
   },
   "crons": [
