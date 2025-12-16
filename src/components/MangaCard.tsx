@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { MangaWithSettings, ReadingStatus } from '../types/index';
 
@@ -30,6 +30,13 @@ export function MangaCard({
   const handleUpdateTitle = (newTitle: string) => onUpdateTitle(manga.id, newTitle);
   const handleUpdateStatus = (status: ReadingStatus) => onUpdateStatus(manga.id, status);
 
+  // Calculate unread chapters
+  const lastRead = manga.settings.last_read_chapter || 0;
+  const latestChapter = manga.chapters.length > 0
+    ? Math.max(...manga.chapters.map(c => c.number))
+    : 0;
+  const unreadCount = Math.max(0, latestChapter - lastRead);
+
   return (
     <motion.div
       layout
@@ -40,6 +47,18 @@ export function MangaCard({
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="group relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/80 shadow-sm shadow-slate-200/60 transition-colors hover:border-fuchsia-300/80 hover:shadow-lg hover:shadow-fuchsia-300/30 dark:border-slate-700/70 dark:bg-slate-900/70 dark:hover:border-fuchsia-400/80 dark:shadow-black/40"
     >
+      {/* Unread Badge */}
+      {unreadCount > 0 && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 px-2.5 py-1 text-xs font-bold text-white shadow-lg shadow-fuchsia-500/30"
+        >
+          <Sparkles size={12} className="animate-pulse" />
+          <span>+{unreadCount}</span>
+        </motion.div>
+      )}
+
       {/* Hover Actions */}
       <CardActions
         onReport={() => onReport(manga.id)}

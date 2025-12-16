@@ -34,9 +34,30 @@ interface SchedulerManga {
   user_manga_settings: MangaSettings[];
 }
 
-export async function checkAllMangas() {
+// Result type for update operations
+export interface UpdateResult {
+  total: number;
+  checked: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  updatedMangas: { id: string; title: string; newChaptersCount: number }[];
+  durationMs: number;
+}
+
+export async function checkAllMangas(): Promise<UpdateResult> {
   const startTime = Date.now();
   logger.scheduler.start('checkAllMangas');
+
+  const result: UpdateResult = {
+    total: 0,
+    checked: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+    updatedMangas: [],
+    durationMs: 0
+  };
 
   try {
     const { data: mangas, error } = await supabase
@@ -51,20 +72,16 @@ export async function checkAllMangas() {
 
     if (error) {
       log.error('Error fetching mangas for update', error);
-      return;
+      return result;
     }
 
     if (!mangas || mangas.length === 0) {
       log.info('No mangas to check');
-      return;
+      return result;
     }
 
+    result.total = mangas.length;
     log.info('Starting manga checks', { totalMangas: mangas.length });
-
-    let checked = 0;
-    let updated = 0;
-    let skipped = 0;
-    let failed = 0;
 
     for (const rawManga of mangas) {
       const manga = rawManga as unknown as SchedulerManga;
@@ -76,7 +93,7 @@ export async function checkAllMangas() {
 
         if (activeReaders.length === 0 && settings.length > 0) {
           logger.scheduler.skip(manga.title, 'no active readers');
-          skipped++;
+          result.skipped++;
           continue;
         }
 
@@ -99,7 +116,7 @@ export async function checkAllMangas() {
                 manga.title,
                 `next expected ${nextCheckDate.toDateString()}`
               );
-              skipped++;
+              result.skipped++;
               continue;
             }
           }
@@ -133,7 +150,12 @@ export async function checkAllMangas() {
             });
 
             await sendNotifications(manga, newChapters);
-            updated++;
+            result.updated++;
+            result.updatedMangas.push({
+              id: manga.id,
+              title: manga.title,
+              newChaptersCount: newChapters.length
+            });
           } else {
             log.debug('No new chapters', { title: manga.title });
           }
@@ -145,7 +167,7 @@ export async function checkAllMangas() {
           .update({ updated_at: new Date().toISOString() })
           .eq('id', manga.id);
 
-        checked++;
+        result.checked++;
 
         // Rate limiting - 5 seconds between requests
         await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -153,25 +175,29 @@ export async function checkAllMangas() {
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         log.error('Failed to update manga', error, { title: manga.title });
-        failed++;
+        result.failed++;
       }
     }
 
-    const duration = Date.now() - startTime;
-    logger.scheduler.complete('checkAllMangas', updated, duration);
+    result.durationMs = Date.now() - startTime;
+    logger.scheduler.complete('checkAllMangas', result.updated, result.durationMs);
 
     log.info('Update check complete', {
-      total: mangas.length,
-      checked,
-      updated,
-      skipped,
-      failed,
-      durationMs: duration
+      total: result.total,
+      checked: result.checked,
+      updated: result.updated,
+      skipped: result.skipped,
+      failed: result.failed,
+      durationMs: result.durationMs
     });
+
+    return result;
 
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
     log.error('Fatal error in scheduler', error);
+    result.durationMs = Date.now() - startTime;
+    return result;
   }
 }
 

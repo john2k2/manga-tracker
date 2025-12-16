@@ -27,10 +27,23 @@ router.post('/manual-update', async (_req, res) => {
     lastManualUpdate = now;
 
     try {
-        await checkAllMangas();
+        const result = await checkAllMangas();
+
+        // Build message based on results
+        let message = '¡Actualización completada!';
+        if (result.updatedMangas.length > 0) {
+            const totalNewChapters = result.updatedMangas.reduce((sum, m) => sum + m.newChaptersCount, 0);
+            message = `¡${totalNewChapters} capítulo${totalNewChapters > 1 ? 's' : ''} nuevo${totalNewChapters > 1 ? 's' : ''} en ${result.updatedMangas.length} manga${result.updatedMangas.length > 1 ? 's' : ''}!`;
+        } else if (result.checked === 0 && result.skipped > 0) {
+            message = 'Todo al día, nada que actualizar.';
+        } else {
+            message = 'Sin novedades por ahora.';
+        }
+
         res.json({
             success: true,
-            message: '¡Actualización completada!',
+            message,
+            ...result,
             timestamp: new Date().toISOString()
         });
     } catch (error: unknown) {

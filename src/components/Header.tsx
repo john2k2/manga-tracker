@@ -33,7 +33,18 @@ export function Header({ onLogout, onRefreshComplete }: HeaderProps) {
           throw new Error(data.error || 'Error al actualizar');
         }
       } else {
-        toast.success(data.message || '¡Actualización completada!');
+        // Show special toast if there are new chapters
+        if (data.updatedMangas && data.updatedMangas.length > 0) {
+          // Show individual toasts for each manga with new chapters
+          data.updatedMangas.forEach((manga: { title: string; newChaptersCount: number }) => {
+            toast.success(
+              `📚 ${manga.title}: +${manga.newChaptersCount} capítulo${manga.newChaptersCount > 1 ? 's' : ''}`,
+              { duration: 5000 }
+            );
+          });
+        } else {
+          toast.info(data.message || 'Sin novedades por ahora.');
+        }
         onRefreshComplete?.();
       }
     } catch (err) {
