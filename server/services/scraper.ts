@@ -270,6 +270,8 @@ async function parseWithGemini(content: string, url: string, type: 'html' | 'mar
   const limit = type === 'html' ? 200000 : 150000;
   const truncatedContent = content.substring(0, limit);
 
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
   const prompt = `
       You are a manga scraper parser. Extract information from the provided ${type} content.
       
@@ -292,6 +294,13 @@ async function parseWithGemini(content: string, url: string, type: 'html' | 'mar
       - "url" MUST be absolute. Base URL: ${url}
       - Sort by number descending.
       - Limit to latest 20 chapters.
+      - "release_date" MUST be in YYYY-MM-DD format. Today is ${today}.
+        - If you see "hace X días" or "X days ago", calculate the actual date.
+        - If you see "ayer" or "yesterday", use yesterday's date.
+        - If you see "hoy" or "today", use today's date.
+        - If you see a date like "Dec 15" or "15 Dec", use the current year.
+        - If you see "hace X horas" or "X hours ago", use today's date.
+        - If no date is visible, leave release_date as null (not "YYYY-MM-DD").
       
       Content (${type}):
       ${truncatedContent}

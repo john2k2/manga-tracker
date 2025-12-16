@@ -17,6 +17,30 @@ interface ChapterListProps {
 export function ChapterList({ chapters, lastReadChapter = 0, onMarkRead }: ChapterListProps) {
     const lastRead = lastReadChapter || 0;
 
+    // Format date as relative (e.g., "hace 2 días", "ayer", "hoy")
+    const formatRelativeDate = (dateStr: string | null): string => {
+        if (!dateStr) return '';
+
+        const date = new Date(dateStr);
+        const now = new Date();
+
+        // Check if date is today (likely a fallback date, don't show)
+        const isToday = date.toDateString() === now.toDateString();
+
+        // Calculate days difference
+        const diffTime = now.getTime() - date.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) return ''; // Future date, invalid
+        if (diffDays === 0) return isToday ? 'hoy' : '';
+        if (diffDays === 1) return 'ayer';
+        if (diffDays <= 7) return `hace ${diffDays}d`;
+        if (diffDays <= 30) return `hace ${Math.floor(diffDays / 7)}sem`;
+        if (diffDays <= 365) return date.toLocaleDateString('es', { month: 'short', day: 'numeric' });
+
+        return date.toLocaleDateString('es', { year: 'numeric', month: 'short' });
+    };
+
     if (chapters.length === 0) {
         return (
             <div className="rounded-lg border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400 dark:border-slate-700 dark:text-slate-500">
@@ -87,13 +111,7 @@ export function ChapterList({ chapters, lastReadChapter = 0, onMarkRead }: Chapt
                                     ? "text-emerald-500 dark:text-emerald-600"
                                     : "text-slate-400"
                             )}>
-                                {chapter.release_date
-                                    ? new Date(chapter.release_date).toLocaleDateString(undefined, {
-                                        month: 'short',
-                                        day: 'numeric'
-                                    })
-                                    : ''
-                                }
+                                {formatRelativeDate(chapter.release_date)}
                             </span>
                         </a>
                     </div>
